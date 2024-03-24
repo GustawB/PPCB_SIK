@@ -42,5 +42,24 @@ ssize_t read_n_bytes(int fd, void* dsptr, size_t n) {
         iter_ptr += bytes_read;
     }
 
-    return n = bytes_left;
+    return n - bytes_left;
+}
+
+ssize_t write_n_bytes(int fd, void* dsptr, size_t n) {
+    ssize_t bytes_written;
+    ssize_t bytes_left = n;
+    const char* iter_ptr = dsptr;
+
+    // Write to the stream as long as there is no error and we didn't write everything.
+    while(bytes_left > 0) {
+        if ((bytes_written = write(fd, iter_ptr, bytes_left)) <= 0) {
+            // There was some kind of error.
+            return bytes_written;
+        }
+
+        bytes_left -= bytes_written;
+        iter_ptr += bytes_written;
+    }
+
+    return n - bytes_left;
 }

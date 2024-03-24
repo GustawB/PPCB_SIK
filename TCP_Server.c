@@ -10,6 +10,7 @@
 
 #include "TCP_Server.h"
 #include "protconst.h"
+#include "common.h"
 #include "err.h"
 
 void run_tcp_server(uint16_t port) {
@@ -64,5 +65,34 @@ void run_tcp_server(uint16_t port) {
         setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &time_options, sizeof(time_options));
 
         // Read a CONN package.
+        CONN connect_data;
+        ssize_t bytes_read = read_n_bytes(client_fd, &connect_data, sizeof(connect_data));
+        if (bytes_read < 0) { // Some kind of error occured.
+            if (errno == EAGAIN) {
+                error("Connection timeout; moving to the next client.");
+                continue;
+            }
+            else{
+                error("read() in read_n_bytes() failed.");
+                break;
+            }
+
+        }
+        else if (bytes_read == 0) {
+            // Connection closed. Continue the loop.
+            continue;
+        }
+        else if ((size_t)bytes_read < sizeof(connect_data)) {
+            error("Client failed to send the CONN package. Moving to the next one...");
+            continue;
+        }
+
+        // Managed to get CONN package, it's time to send CONACC back to the client.
+        CONACC con_ack_data = {.pkt_type_id = 2, .session_id = connect_data.session_id};
+        ssize_t bytes_written = write_n_bytes(client_fd, &con_ack_data, sizeof(con_ack_data));
+        close(client_fd);
     }
+    
+    close(socket_fd);
+    return 0;
 }
