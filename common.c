@@ -17,7 +17,7 @@ uint16_t read_port(char const *string) {
     unsigned long port = strtoul(string, &endptr, 10);
     if ((port == ULONG_MAX && errno == ERANGE) || *endptr != 0 || 
         port == 0 || port > UINT16_MAX) {
-        fatal("%s is not a valid port number", string);
+        fatal("%s is not a valid port number.", string);
     }
     return (uint16_t) port;
 }

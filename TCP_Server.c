@@ -51,5 +51,12 @@ void run_tcp_server(uint16_t port) {
         if (client_fd < 0) {
             syserr("Failed to connect with a client");
         }
+
+        // Get the IP address of the client (convert it from binary to string).
+        const char* client_ip = inet_ntoa(client_addr.sin_addr);
+        uint16_t client_port = ntohs(client_addr.sin_port);
+        printf("Connected with a client; IP: %s; Port: %d", client_ip, client_port);
+
+
     }
 }
