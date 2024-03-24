@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 
 #include "TCP_Server.h"
+#include "protconst.h"
 #include "err.h"
 
 void run_tcp_server(uint16_t port) {
@@ -57,6 +58,11 @@ void run_tcp_server(uint16_t port) {
         uint16_t client_port = ntohs(client_addr.sin_port);
         printf("Connected with a client; IP: %s; Port: %d", client_ip, client_port);
 
+        // Set timeouts for the client.
+        struct timeval time_options = {.tv_sec = MAX_WAIT, .tv_usec = 0};
+        setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &time_options, sizeof(time_options));
+        setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &time_options, sizeof(time_options));
 
+        // Read a CONN package.
     }
 }

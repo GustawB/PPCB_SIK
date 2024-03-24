@@ -10,6 +10,7 @@
 #define UDPR_PROT "udpr"
 
 uint16_t read_port(const char* string);
+ssize_t read_n_bytes(int fd, void* dsptr, size_t n);
 
 typedef struct __attribute__((__packed__)) {
     uint8_t pkt_type_id;
