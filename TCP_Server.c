@@ -39,4 +39,17 @@ void run_tcp_server(uint16_t port) {
     }
 
     printf("Server is listening on port %d...\n", port);
+
+    // Communication loop:
+    for (;;) {
+        struct sockaddr_in client_addr;
+
+        // Accept a connection with a client.
+        // Below I'm making a compound literal.
+        int client_fd = accept(socket_fd, (struct sockaddr*)&client_addr, 
+                                &((socklen_t){sizeof(client_addr)}));
+        if (client_fd < 0) {
+            syserr("Failed to connect with a client");
+        }
+    }
 }
