@@ -21,4 +21,7 @@ int main(int argc, char* argv[]) {
     strcmp(argv[1], UDPR_PROT) != 0) {
         fatal("Protocol %s is not supported.", argv[1]);
     }
+
+    const char* host_name = argv[1];
+    uint16_t port = read_port(argv[2]);
 }

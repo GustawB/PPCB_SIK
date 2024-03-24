@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 
 #include "err.h"
@@ -62,4 +63,31 @@ ssize_t write_n_bytes(int fd, void* dsptr, size_t n) {
     }
 
     return n - bytes_left;
+}
+
+struct sockaddr_in get_server_address(char const *host, uint16_t port) {
+    struct addrinfo hints;
+    // Malloc would require me to worry about freeing the memory later,
+    // and I don't need pointer arithmetics.
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+
+    struct addrinfo* addr_res;
+    int errcode = getaddrinfo(host, NULL, &hints, &addr_res);
+    if (errcode != 0) {
+        fatal("getaddrinfo: %s", gai_strerror(errcode));
+    }
+
+    struct sockaddr_in send_addr;
+    send_addr.sin_family = AF_INET; // IPv4;
+    // IP address.
+    send_addr.sin_addr.s_addr = 
+        ((struct sockaddr_in*)addr_res->ai_addr)->sin_addr.s_addr;
+    send_addr.sin_port = htons(port);
+
+    freeaddrinfo(addr_res);
+
+    return send_addr;
 }

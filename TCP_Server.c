@@ -92,7 +92,6 @@ void run_tcp_server(uint16_t port) {
         ssize_t bytes_written = write_n_bytes(client_fd, &con_ack_data, sizeof(con_ack_data));
         close(client_fd);
     }
-    
+
     close(socket_fd);
-    return 0;
 }
