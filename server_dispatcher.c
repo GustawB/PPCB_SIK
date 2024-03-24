@@ -10,6 +10,7 @@
 #include <sys/types.h>
 
 #include "protconst.h"
+#include "TCP_Server.h"
 #include "common.h"
 #include "err.h"
 
@@ -21,4 +22,5 @@ int main(int argc, char* argv[]) {
         fatal("Protocol %s is not supported.", argv[1]);
     }
 
+    run_tcp_server();
 }
