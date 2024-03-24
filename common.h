@@ -9,6 +9,8 @@
 #define UDP_PROT "udp"
 #define UDPR_PROT "udpr"
 
+uint16_t read_port(const char* string);
+
 typedef struct __attribute__((__packed__)) {
     uint8_t pkt_type_id;
     uint64_t session_id;
