@@ -10,6 +10,7 @@
 #include <sys/types.h>
 
 #include "protconst.h"
+#include "TCP_Client.h"
 #include "common.h"
 #include "err.h"
 
@@ -22,6 +23,8 @@ int main(int argc, char* argv[]) {
         fatal("Protocol %s is not supported.", argv[1]);
     }
 
-    const char* host_name = argv[1];
-    uint16_t port = read_port(argv[2]);
+    const char* host_name = argv[2];
+    uint16_t port = read_port(argv[3]);
+    struct sockaddr_in server_addr = get_server_address(host_name, port);
+    run_tcp_client(&server_addr);
 }

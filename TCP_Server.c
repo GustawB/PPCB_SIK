@@ -90,6 +90,9 @@ void run_tcp_server(uint16_t port) {
         // Managed to get CONN package, it's time to send CONACC back to the client.
         CONACC con_ack_data = {.pkt_type_id = 2, .session_id = connect_data.session_id};
         ssize_t bytes_written = write_n_bytes(client_fd, &con_ack_data, sizeof(con_ack_data));
+        if ((size_t) bytes_written < sizeof(con_ack_data)) {
+            error("Server failed to send the CONACC package back to the client.");
+        }
         close(client_fd);
     }
 
