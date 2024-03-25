@@ -25,6 +25,7 @@ int main(int argc, char* argv[]) {
 
     const char* host_name = argv[2];
     uint16_t port = read_port(argv[3]);
+    printf("%s %d\n", host_name, port);
     struct sockaddr_in server_addr = get_server_address(host_name, port);
     run_tcp_client(&server_addr);
 }

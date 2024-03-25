@@ -13,7 +13,7 @@
 #include "common.h"
 #include "err.h"
 
-void run_tcp_client(const struct sockaddr_in* server_addr) {
+void run_tcp_client(struct sockaddr_in* server_addr) {
     printf("TCP client started operating!!!\n");
 
     // Create a socket with IPv4 protocol.
@@ -22,11 +22,14 @@ void run_tcp_client(const struct sockaddr_in* server_addr) {
         syserr("ERROR: Failed to create a socket.");
     }
 
+    printf("%d\n", server_addr->sin_addr.s_addr);
     // Connect to the server.
     if (connect(socket_fd, (struct sockaddr*)server_addr,
-                (socklen_t) sizeof(server_addr)) < 0) {
+                (socklen_t) sizeof(*server_addr)) < 0) {
         syserr("Client failed to connect to the server");
     }
+
+    printf("%d\n", server_addr->sin_addr.s_addr);
 
     bool bWasAbleToEstablishConnection = true;
 
@@ -38,7 +41,7 @@ void run_tcp_client(const struct sockaddr_in* server_addr) {
         bWasAbleToEstablishConnection = false;
     }
 
-    // Read a CONNACC package but only if we managed to send the CONN package.
+    // Read a CONACC package but only if we managed to send the CONN package.
     if (bWasAbleToEstablishConnection) {
         CONACC con_ack_data;
         ssize_t bytes_read = read_n_bytes(socket_fd, &con_ack_data, sizeof(con_ack_data));
@@ -53,7 +56,7 @@ void run_tcp_client(const struct sockaddr_in* server_addr) {
             }
 
         }
-        else if ((size_t)bytes_read < sizeof(connect_data)) {
+        else if ((size_t)bytes_read < sizeof(con_ack_data)) {
             error("Server failed to send the CONACC package; finishing execution...");
             bWasAbleToEstablishConnection = false;
         }

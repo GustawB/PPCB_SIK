@@ -57,7 +57,8 @@ void run_tcp_server(uint16_t port) {
         // Get the IP address of the client (convert it from binary to string).
         const char* client_ip = inet_ntoa(client_addr.sin_addr);
         uint16_t client_port = ntohs(client_addr.sin_port);
-        printf("Connected with a client; IP: %s; Port: %d", client_ip, client_port);
+        printf("Connected with a client; IP: %s; Port: %d\n", client_ip, client_port);
+        // printf("Connected\n");
 
         // Set timeouts for the client.
         struct timeval time_options = {.tv_sec = MAX_WAIT, .tv_usec = 0};
@@ -87,12 +88,15 @@ void run_tcp_server(uint16_t port) {
             continue;
         }
 
+        printf("Received the CONN package\n");
+
         // Managed to get CONN package, it's time to send CONACC back to the client.
         CONACC con_ack_data = {.pkt_type_id = 2, .session_id = connect_data.session_id};
         ssize_t bytes_written = write_n_bytes(client_fd, &con_ack_data, sizeof(con_ack_data));
         if ((size_t) bytes_written < sizeof(con_ack_data)) {
             error("Server failed to send the CONACC package back to the client.");
         }
+        printf("Sent the CONACC package\n");
         close(client_fd);
     }
 
