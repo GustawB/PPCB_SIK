@@ -97,6 +97,17 @@ void run_tcp_server(uint16_t port) {
             error("Server failed to send the CONACC package back to the client.");
         }
         printf("Sent the CONACC package\n");
+
+        printf("Reading data...\n");
+
+        // Managed to get all the data. Send RCVD package to the client and close the connection.
+        RCVD recv_data_ack = {.pkt_type_id = 7, .session_id = 2137};
+        bytes_written = write_n_bytes(client_fd, &recv_data_ack, sizeof(recv_data_ack));
+        if ((size_t) bytes_written < sizeof(recv_data_ack)) {
+            error("Server failed to send the RCVD package to the client.");
+        }
+
+        printf("Closing a connection with the client...\n");
         close(client_fd);
     }
 

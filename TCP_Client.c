@@ -65,7 +65,29 @@ void run_tcp_client(struct sockaddr_in* server_addr) {
     // If w managed to both send CONN and receive CONACK, we can proceed
     // to the data transfer.
     if (bWasAbleToEstablishConnection) {
-        printf("asdfghjkl\n");
+        printf("Sending data...\n");
     }
+
+    // Managed to send all the data, now we wait for the RCVD and if we get it,
+    // we close the connection.
+    RCVD recv_data_ack;
+    ssize_t bytes_read = read_n_bytes(socket_fd, &recv_data_ack, sizeof(recv_data_ack));
+    if (bytes_read < 0) { // Some kind of error occured.
+        if (errno == EAGAIN) {
+            error("Connection timeout; finishing execution...");
+            bWasAbleToEstablishConnection = false;
+        }
+        else{
+            error("read() in read_n_bytes() on the client side failed.");
+            bWasAbleToEstablishConnection = false;
+        }
+
+    }
+    else if ((size_t)bytes_read < sizeof(recv_data_ack)) {
+        error("Server failed to send the RCVD package; finishing execution...");
+        bWasAbleToEstablishConnection = false;
+    }
+
+    printf("Client closing a connection\n");
     close(socket_fd);
 }
