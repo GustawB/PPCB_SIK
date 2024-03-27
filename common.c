@@ -38,7 +38,7 @@ ssize_t read_n_bytes(int fd, void* dsptr, size_t n) {
             // Encountered EOF.
             break;
         }
-
+        printf("SSEEEEXXXXX: %ld\n", bytes_read);
         bytes_left -= bytes_read;
         iter_ptr += bytes_read;
     }

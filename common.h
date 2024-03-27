@@ -9,6 +9,8 @@
 #define UDP_PROT "udp"
 #define UDPR_PROT "udpr"
 
+#define PCK_SIZE 64000
+
 uint16_t read_port(const char* string);
 ssize_t read_n_bytes(int fd, void* dsptr, size_t n);
 ssize_t write_n_bytes(int fd, void* dsptr, size_t n);
@@ -39,7 +41,7 @@ typedef struct __attribute__((__packed__)) {
     uint64_t pkt_nr;
     // Big endian
     uint32_t data_size;
-    const char* data;
+    char* data;
 } DATA;
 
 typedef struct __attribute__((__packed__)) {

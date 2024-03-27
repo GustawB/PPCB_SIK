@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 
@@ -99,6 +100,43 @@ void run_tcp_server(uint16_t port) {
         printf("Sent the CONACC package\n");
 
         printf("Reading data...\n");
+        uint64_t byte_count = be64toh(connect_data.data_length);
+        printf("%ld\n", byte_count);
+        while(byte_count > 0) {
+            /*
+                Check bytes_read == 0 case
+            */
+            uint32_t curr_len = PCK_SIZE;
+            if (curr_len > byte_count) {
+                curr_len = byte_count;
+            }
+            char* recv_data = malloc(sizeof(DATA) - 1 + curr_len);
+            printf("Length: %ld\n", sizeof(DATA) - 1 + curr_len);
+            bytes_read = read_n_bytes(client_fd, recv_data, sizeof(DATA) - 1 + curr_len);
+            assert_read(bytes_read, sizeof(DATA) - 1 + curr_len);
+            printf("Read data: %ld\n", sizeof(bytes_read));
+            DATA* dt = (DATA*)recv_data;
+            printf("Session id: %ld\n", dt->session_id);
+            printf("Data size: %d\n", dt->data_size);
+            byte_count -= dt->data_size;
+            printf("Data: %s", recv_data + sizeof(DATA) - 1);
+        }
+        /*while (byte_count > 0) {
+            printf("%ld", byte_count);
+            
+
+
+            
+
+
+            
+            DATA recv_data;
+            bytes_read = read_n_bytes(client_fd, &recv_data, sizeof(recv_data));
+            assert_read(bytes_read, sizeof(recv_data));
+            byte_count -= bytes_read;
+            //printf("%s", recv_data.data);
+        }*/
+
 
         // Managed to get all the data. Send RCVD package to the client and close the connection.
         RCVD recv_data_ack = {.pkt_type_id = 7, .session_id = 2137};

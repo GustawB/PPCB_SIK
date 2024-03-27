@@ -49,7 +49,7 @@ void error(const char* fmt, ...) {
     fprintf(stderr, "\n");
 }
 
-bool assert_read(uint16_t ret_val, size_t ds_size) {
+bool assert_read(int16_t ret_val, size_t ds_size) {
     if (ret_val < 0) { // Some kind of error occured.
         if (errno == EAGAIN) {
             error("Connection timeout; finishing execution...");

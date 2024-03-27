@@ -23,9 +23,19 @@ int main(int argc, char* argv[]) {
         fatal("Protocol %s is not supported.", argv[1]);
     }
 
+    // Read data from the standard input.
+    char* input_data;
+    size_t n = 0;
+    uint64_t data_length = getline(&input_data, &n, stdin);
+    if (data_length > 0) {
+        printf("%s", input_data);
+    }
+    printf("%ld\n", data_length);
+
     const char* host_name = argv[2];
     uint16_t port = read_port(argv[3]);
     printf("%s %d\n", host_name, port);
     struct sockaddr_in server_addr = get_server_address(host_name, port);
-    run_tcp_client(&server_addr);
+    run_tcp_client(&server_addr, input_data, data_length);
+    free(input_data);
 }
