@@ -60,17 +60,18 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
             }
 
             // Initialize a package.
-            int size = sizeof(DATA) - 1 + data_length;
-            char* data_pck = malloc(sizeof(DATA) - 1 + data_length);
+            size_t pck_size = sizeof(DATA) - 8 + data_length;
+            printf("Package size: %ld\n", pck_size);
+            char* data_pck = malloc(pck_size);
             if (data_pck == NULL) { 
                 // malloc failed.
                 break;
             }
             initialize_data_package(session_id, pck_number, 
-                                    data_length, data_pck);
+                                    data_length, data_pck, data);
 
             // Send the package to the server.
-            bytes_written = write_n_bytes(socket_fd, data_pck, sizeof(DATA) - 1 + data_length);
+            bytes_written = write_n_bytes(socket_fd, data_pck, pck_size);
             if ((size_t) bytes_written < sizeof(*data_pck)) {
                 error("Client failed to send a data package to the server.");
                 close(socket_fd);

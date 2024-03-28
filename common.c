@@ -14,9 +14,9 @@
 #include "common.h"
 
 void initialize_data_package(uint64_t session_id, uint64_t pck_number, 
-                                uint32_t data_size, char* data) {
+                                uint32_t data_size, char* data_pck, const char* data) {
     uint8_t pck_type = 4;
-    char* data_iter = data;
+    char* data_iter = data_pck;
 
     memcpy(data_iter, &pck_type, sizeof(pck_type));
     data_iter += sizeof(pck_type);
@@ -30,7 +30,7 @@ void initialize_data_package(uint64_t session_id, uint64_t pck_number,
     memcpy(data_iter, &data_size, sizeof(data_size));
     data_iter += sizeof(data_size);
 
-    memcpy(data_iter, data_iter, data_size);
+    memcpy(data_iter, data, data_size);
 }
 
 uint16_t read_port(char const *string) {
