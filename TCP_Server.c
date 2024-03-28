@@ -119,7 +119,7 @@ void run_tcp_server(uint16_t port) {
             printf("Session id: %ld\n", dt->session_id);
             printf("Data size: %d\n", dt->data_size);
             byte_count -= dt->data_size;
-            printf("Data: %s", recv_data + sizeof(DATA) - 1);
+            printf("Data: %s", recv_data + 21);
         }
         /*while (byte_count > 0) {
             printf("%ld", byte_count);

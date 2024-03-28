@@ -13,6 +13,26 @@
 #include "err.h"
 #include "common.h"
 
+void initialize_data_package(uint64_t session_id, uint64_t pck_number, 
+                                uint32_t data_size, char* data) {
+    uint8_t pck_type = 4;
+    char* data_iter = data;
+
+    memcpy(data_iter, &pck_type, sizeof(pck_type));
+    data_iter += sizeof(pck_type);
+
+    memcpy(data_iter, &session_id, sizeof(session_id));
+    data_iter += sizeof(session_id);
+
+    memcpy(data_iter, &pck_number, sizeof(pck_number));
+    data_iter += sizeof(pck_number);
+
+    memcpy(data_iter, &data_size, sizeof(data_size));
+    data_iter += sizeof(data_size);
+
+    memcpy(data_iter, data_iter, data_size);
+}
+
 uint16_t read_port(char const *string) {
     char *endptr;
     unsigned long port = strtoul(string, &endptr, 10);
@@ -38,7 +58,6 @@ ssize_t read_n_bytes(int fd, void* dsptr, size_t n) {
             // Encountered EOF.
             break;
         }
-        printf("SSEEEEXXXXX: %ld\n", bytes_read);
         bytes_left -= bytes_read;
         iter_ptr += bytes_read;
     }

@@ -6,6 +6,7 @@
 #include <inttypes.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/types.h>
 
@@ -32,10 +33,16 @@ int main(int argc, char* argv[]) {
     }
     printf("%ld\n", data_length);
 
+    // Generate a random session indetificator.
+    time_t t;
+    srand((unsigned)time(&t));
+    uint64_t session_id = rand();
+
+    // Start the appropriate server.
     const char* host_name = argv[2];
     uint16_t port = read_port(argv[3]);
-    printf("%s %d\n", host_name, port);
     struct sockaddr_in server_addr = get_server_address(host_name, port);
-    run_tcp_client(&server_addr, input_data, data_length);
+    run_tcp_client(&server_addr, input_data, data_length, session_id);
+
     free(input_data);
 }
