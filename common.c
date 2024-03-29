@@ -13,7 +13,7 @@
 #include "err.h"
 #include "common.h"
 
-void initialize_data_package(uint64_t session_id, uint64_t pck_number, 
+void init_data_pck(uint64_t session_id, uint64_t pck_number, 
                                 uint32_t data_size, char* data_pck, const char* data) {
     uint8_t pck_type = DATA_TYPE;
     char* data_iter = data_pck;
@@ -31,6 +31,12 @@ void initialize_data_package(uint64_t session_id, uint64_t pck_number,
     data_iter += sizeof(data_size);
 
     memcpy(data_iter, data, data_size);
+}
+
+void init_sockaddr(struct sockaddr_in* addr, uint16_t port) {
+    addr->sin_family = AF_INET; // IPv4 protocol.
+    addr->sin_addr.s_addr = htonl(INADDR_ANY); // Listening on all interfaces.
+    addr->sin_port = htons(port);
 }
 
 uint16_t read_port(char const *string) {

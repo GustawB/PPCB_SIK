@@ -15,5 +15,39 @@
 #include "err.h"
 
 void run_udp_server(uint16_t port) {
-    
+    // Create a socket with IPv4 protocol.
+    int socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if(socket_fd < 0){
+        syserr("ERROR: Failed to create a socket.");
+    }
+
+    // Bind the socket to the local adress.
+    struct sockaddr_in server_addr;
+    init_sockaddr(&server_addr, port);
+
+    if (bind(socket_fd, (struct sockaddr*)&server_addr, (socklen_t) sizeof(server_addr)) < 0){
+        close(socket_fd);
+        syserr("ERROR: Failed to bind a socket");
+    }
+
+    // Communication loop
+    for (;;) {
+        // Get a CONN package.
+        int flags = 0;
+        struct sockaddr_in client_addr;
+        socklen_t addr_length = (socklen_t)sizeof(client_addr);
+        CONN connection_data;
+        ssize_t bytes_read = recvfrom(socket_fd, &connection_data,
+                                        sizeof(connection_data), flags,
+                                        (struct sockaddr*)&client_addr,
+                                        &addr_length);
+        if (bytes_read < 0) {
+            // Failed to establish a connection.
+            close(socket_fd);
+            syserr("Failed to read CONN package");
+        }
+
+        // Send CONACC back to the client.
+        CONACC resp = {.pkt_type_id = CONACC_TYPE, .session_id = connection_data.session_id};
+    }
 }

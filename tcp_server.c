@@ -26,9 +26,7 @@ void run_tcp_server(uint16_t port) {
 
     // Bind the socket to the local adress.
     struct sockaddr_in server_addr;
-    server_addr.sin_family = AF_INET; // IPv4 protocol.
-    server_addr.sin_addr.s_addr = htonl(INADDR_ANY); // Listening on all interfaces.
-    server_addr.sin_port = htons(port);
+    init_sockaddr(&server_addr, port);
 
     if (bind(socket_fd, (struct sockaddr*)&server_addr, (socklen_t) sizeof(server_addr)) < 0){
         close(socket_fd);
@@ -63,7 +61,7 @@ void run_tcp_server(uint16_t port) {
         setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &time_options, sizeof(time_options));
         setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &time_options, sizeof(time_options));
 
-        // Read a CONN package.
+        // Get a CONN package.
         CONN connect_data;
         ssize_t bytes_read = read_n_bytes(client_fd, &connect_data, sizeof(connect_data));
         if (bytes_read == 0) {

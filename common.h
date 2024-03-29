@@ -26,8 +26,9 @@
 uint16_t read_port(const char* string);
 ssize_t read_n_bytes(int fd, void* dsptr, size_t n);
 ssize_t write_n_bytes(int fd, void* dsptr, size_t n);
-void initialize_data_package(uint64_t session_id, uint64_t pck_number, 
+void init_data_pck(uint64_t session_id, uint64_t pck_number, 
                                 uint32_t data_size, char* data_pck, const char* data);
+void init_sockaddr(struct sockaddr_in* addr, uint16_t port);
 struct sockaddr_in get_server_address(char const *host, uint16_t port);
 
 typedef struct __attribute__((__packed__)) {

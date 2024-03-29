@@ -71,7 +71,7 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
                 // malloc failed.
                 break;
             }
-            initialize_data_package(session_id, pck_number, 
+            init_data_pck(session_id, pck_number, 
                                     data_length, data_pck, data);
 
             // Send the package to the server.
