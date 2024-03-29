@@ -76,9 +76,6 @@ void run_tcp_server(uint16_t port) {
             if ((size_t) bytes_written < sizeof(con_ack_data)) {
                 error("Server failed to send the CONACC package back to the client.");
             }
-            close(client_fd);
-            close(socket_fd);
-            break;
             // Read data from the client.
             uint64_t byte_count = be64toh(connect_data.data_length);
             bool b_connection_closed = false;
@@ -96,18 +93,20 @@ void run_tcp_server(uint16_t port) {
                     break;
                 }
                 else if (assert_read(bytes_read, sizeof(DATA) - 8 + curr_len)) {
-                    assert_read(bytes_read, sizeof(DATA) - 8 + curr_len);
                     DATA* dt = (DATA*)recv_data;
                     byte_count -= dt->data_size;
                     printf("Data: %s\n", recv_data + 21);
                 }
             }
 
-            // Managed to get all the data. Send RCVD package to the client and close the connection.
-            RCVD recv_data_ack = {.pkt_type_id = 7, .session_id = 2137};
-            bytes_written = write_n_bytes(client_fd, &recv_data_ack, sizeof(recv_data_ack));
-            if ((size_t) bytes_written < sizeof(recv_data_ack)) {
-                error("Server failed to send the RCVD package to the client.");
+            if (!b_connection_closed) {
+                // Managed to get all the data. Send RCVD package 
+                // to the client and close the connection.
+                RCVD recv_data_ack = {.pkt_type_id = 7, .session_id = 2137};
+                bytes_written = write_n_bytes(client_fd, &recv_data_ack, sizeof(recv_data_ack));
+                if ((size_t) bytes_written < sizeof(recv_data_ack)) {
+                    error("Server failed to send the RCVD package to the client.");
+                }
             }
 
             printf("Closing a connection with the client...\n");
@@ -115,5 +114,5 @@ void run_tcp_server(uint16_t port) {
         }
     }
 
-    //close(socket_fd);
+    close(socket_fd);
 }

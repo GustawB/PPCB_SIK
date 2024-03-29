@@ -60,7 +60,32 @@ void run_udp_server(uint16_t port) {
             fatal("Incomplete send.");
         }
 
-        printf("READING DATATATATATATATATATATTTATTATATAA\n");
+        printf("READING DATA\n");
+
+        // Data reading.
+        uint64_t byte_count = be64toh(connection_data.data_length);
+        while(byte_count > 0) {
+            printf("%ld\n", byte_count);
+            addr_length = (socklen_t)sizeof(client_addr);
+            uint32_t curr_len = PCK_SIZE;
+            if (curr_len > byte_count) {
+                curr_len = byte_count;
+            }
+
+            ssize_t pck_size = sizeof(DATA) - 8 + curr_len;
+            char* recv_data = malloc(pck_size);
+            bytes_read = recvfrom(socket_fd, recv_data, pck_size, flags,
+                                  (struct sockaddr*)&client_addr, &addr_length);
+            printf("Bytes read: %ld\n", bytes_read);
+            if (bytes_read < pck_size) {
+                // Failed read data.
+                close(socket_fd);
+                syserr("Incomplete data read");
+            }
+            DATA* dt = (DATA*)recv_data;
+            byte_count -= dt->data_size;
+            printf("Received data: %s\n", recv_data + 21);
+        }
 
         // Received a whole message, sent RCVD back to the client.
         RCVD rcvd_pck = {.pkt_type_id = RCVD_TYPE, .session_id = connection_data.session_id};
@@ -74,5 +99,7 @@ void run_udp_server(uint16_t port) {
             close(socket_fd);
             fatal("Incomplete send.");
         }
+
+        printf("Server ended\n");
     }
 }

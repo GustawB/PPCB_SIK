@@ -31,6 +31,7 @@ void init_data_pck(uint64_t session_id, uint64_t pck_number,
     data_iter += sizeof(data_size);
 
     memcpy(data_iter, data, data_size);
+    printf("Data: %s\n", data_iter);
 }
 
 void init_sockaddr(struct sockaddr_in* addr, uint16_t port) {

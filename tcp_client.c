@@ -50,7 +50,6 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
 
     // If w managed to both send CONN and receive CONACK, we can proceed
     // to the data transfer.
-    sleep(10);
     if (assert_read(bytes_read, sizeof(con_ack_data))) {
         printf("Sending data...\n");
 
@@ -65,19 +64,17 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
             }
 
             // Initialize a package.
-            size_t pck_size = sizeof(DATA) - 8 + data_length;
+            size_t pck_size = sizeof(DATA) - 8 + curr_len;
             char* data_pck = malloc(pck_size);
             if (data_pck == NULL) { 
                 // malloc failed.
                 break;
             }
             init_data_pck(session_id, pck_number, 
-                                    data_length, data_pck, data);
+                                    data_length, data_pck, data_ptr);
 
             // Send the package to the server.
-            printf("Package size: %ld\n", pck_size);
             bytes_written = write_n_bytes(socket_fd, data_pck, pck_size);
-            printf("Write size: %ld\n", bytes_written);
             if ((size_t) bytes_written < sizeof(*data_pck)) {
                 error("Client failed to send a data package to the server.");
                 close(socket_fd);
