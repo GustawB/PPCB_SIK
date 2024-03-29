@@ -64,54 +64,107 @@ void run_tcp_server(uint16_t port) {
         // Get a CONN package.
         CONN connect_data;
         ssize_t bytes_read = read_n_bytes(client_fd, &connect_data, sizeof(connect_data));
-        if (bytes_read == 0) {
-            // Connection closed. Continue the loop.
-            continue;
+        if (bytes_read < 0) {
+            close(socket_fd);
+            close(client_fd);
+            syserr("CONN read failed");
         }
-        else if (assert_read(bytes_read, sizeof(connect_data))) {
+        else if (bytes_read != sizeof(connect_data) && bytes_read != 0) {
+            error("Incomplete CONN read");
+        }
+        else if(bytes_read == sizeof(connect_data)) {
             // Managed to get the CONN package, its time to send CONACC back to the client.
             uint64_t session_id = connect_data.session_id;
             CONACC con_ack_data = {.pkt_type_id = CONACC_TYPE, .session_id = connect_data.session_id};
             ssize_t bytes_written = write_n_bytes(client_fd, &con_ack_data, sizeof(con_ack_data));
-            if ((size_t) bytes_written < sizeof(con_ack_data)) {
-                error("Server failed to send the CONACC package back to the client.");
+            if(bytes_written < 0) {
+                close(socket_fd);
+                close(client_fd);
+                syserr("CONACC send failed");
             }
-            // Read data from the client.
-            uint64_t byte_count = be64toh(connect_data.data_length);
-            bool b_connection_closed = false;
-            while(byte_count > 0) {
-                uint32_t curr_len = PCK_SIZE;
-                if (curr_len > byte_count) {
-                    curr_len = byte_count;
-                }
-                size_t pck_size = sizeof(DATA) - 8 + curr_len;
-                char* recv_data = malloc(pck_size);
-                bytes_read = read_n_bytes(client_fd, recv_data, pck_size);
-                if (bytes_read == 0) {
-                    // Client closed a connection, we have to do the same.
-                    b_connection_closed = true;
-                    break;
-                }
-                else if (assert_read(bytes_read, sizeof(DATA) - 8 + curr_len)) {
-                    DATA* dt = (DATA*)recv_data;
-                    byte_count -= dt->data_size;
-                    printf("Data: %s\n", recv_data + 21);
-                }
+            else if ((size_t) bytes_written < sizeof(con_ack_data)) {
+                close(client_fd);
+                error("Incomplete CONACC send");
             }
+            else {
+                // Read data from the client.
+                uint64_t byte_count = be64toh(connect_data.data_length);
+                bool b_connection_closed = false;
+                uint64_t pck_number = 0;
+                while(byte_count > 0) {
+                    uint32_t curr_len = PCK_SIZE;
+                    if (curr_len > byte_count) {
+                        curr_len = byte_count;
+                    }
+                    int size = sizeof(DATA) - 8 + curr_len;
+                    size_t pck_size = size;
+                    char* recv_data = malloc(pck_size);
+                    if (recv_data == NULL) {
+                        close(socket_fd);
+                        close(client_fd);
+                        fatal("Malloc in data reading failed.");
+                    }
+                    bytes_read = read_n_bytes(client_fd, recv_data, pck_size);
+                    if (bytes_read < 0) {
+                        // Client closed a connection, we have to do the same.
+                        b_connection_closed = true;
+                        close(socket_fd);
+                        close(client_fd);
+                        syserr("Failed to read data from client");
+                    }
+                    else if (bytes_read != size && bytes_read != 0) {
+                        error("Incomplete data read");
+                        break;
+                    }
+                    else if (bytes_read == size) {
+                        DATA* dt = (DATA*)recv_data;
+                        if (dt->pkt_type_id != DATA_TYPE || dt->session_id != connect_data.session_id || 
+                            dt->pkt_nr != pck_number || dt->data_size != curr_len) {
+                            // Invalid package, send RJT to the clint and move on.
+                            free(recv_data);
+                            RJT error_pck = {.session_id = connect_data.session_id,
+                                 .pkt_type_id = RJT_TYPE, .pkt_nr = pck_number};
+                            bytes_written = write_n_bytes(client_fd, &error_pck, sizeof(error_pck));
+                            if(bytes_written < 0) {
+                                close(socket_fd);
+                                close(client_fd);
+                                syserr("RJT send failed");
+                            }
+                            else if ((size_t) bytes_written != sizeof(error_pck)) {
+                                b_connection_closed = true;
+                                error("Incomplete RJT send");
+                                break;
+                            }
+                        }
+                        byte_count -= dt->data_size;
+                        printf("Data: %s\n", recv_data + 21);
+                        free(recv_data);
+                    }
+                    else {
+                        // Connection closed.
+                        break;
+                    }
+                    ++pck_number;
+                }
 
-            if (!b_connection_closed) {
-                // Managed to get all the data. Send RCVD package 
-                // to the client and close the connection.
-                RCVD recv_data_ack = {.pkt_type_id = 7, .session_id = 2137};
-                bytes_written = write_n_bytes(client_fd, &recv_data_ack, sizeof(recv_data_ack));
-                if ((size_t) bytes_written < sizeof(recv_data_ack)) {
-                    error("Server failed to send the RCVD package to the client.");
+                if (!b_connection_closed) {
+                    // Managed to get all the data. Send RCVD package 
+                    // to the client and close the connection.
+                    RCVD recv_data_ack = {.pkt_type_id = RCVD_TYPE, .session_id = connect_data.session_id};
+                    bytes_written = write_n_bytes(client_fd, &recv_data_ack, sizeof(recv_data_ack));
+                    if (bytes_written < 0) {
+                        close(socket_fd);
+                        close(client_fd);
+                        syserr("RCVD send failed");
+                    }
+                    else if ((size_t) bytes_written != sizeof(recv_data_ack)) {
+                        error("Server failed to send the RCVD package to the client.");
+                    }
                 }
             }
-
-            printf("Closing a connection with the client...\n");
-            close(client_fd);
         }
+
+        close(client_fd);
     }
 
     close(socket_fd);

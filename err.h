@@ -19,4 +19,6 @@ void error(const char* fmt, ...);
 // and true otherwise.
 bool assert_read(int16_t ret_val, size_t ds_val);
 
+bool assert_write(int16_t ret_val, size_t ds_val, int server_fd, int client_fd);
+
 #endif
