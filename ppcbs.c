@@ -11,6 +11,7 @@
 
 #include "protconst.h"
 #include "tcp_server.h"
+#include "udp_server.h"
 #include "common.h"
 #include "err.h"
 
@@ -24,5 +25,11 @@ int main(int argc, char* argv[]) {
 
     uint16_t port = read_port(argv[2]);
 
-    run_tcp_server(port);
+    // Server dispatching.
+    if (strcmp(argv[1], TCP_PROT) == 0) {
+        run_tcp_server(port);
+    }
+    else {
+        run_udp_server(port);
+    }
 }
