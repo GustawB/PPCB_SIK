@@ -23,7 +23,7 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
     // Create a socket with IPv4 protocol.
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(socket_fd < 0){
-        syserr("ERROR: Failed to create a socket.");
+        syserr("Failed to create a socket.");
     }
 
     printf("%d\n", server_addr->sin_addr.s_addr);

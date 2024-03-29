@@ -49,5 +49,30 @@ void run_udp_server(uint16_t port) {
 
         // Send CONACC back to the client.
         CONACC resp = {.pkt_type_id = CONACC_TYPE, .session_id = connection_data.session_id};
+        ssize_t bytes_written = sendto(socket_fd, &resp, sizeof(resp),
+                                    flags, (struct sockaddr*)&client_addr, addr_length);
+        if(bytes_written < 0) {
+            close(socket_fd);
+            syserr("Failed to send a CONACC package.");
+        }
+        else if(bytes_written != sizeof(connection_data)) {
+            close(socket_fd);
+            fatal("Incomplete send.");
+        }
+
+        printf("READING DATATATATATATATATATATTTATTATATAA\n");
+
+        // Received a whole message, sent RCVD back to the client.
+        RCVD rcvd_pck = {.pkt_type_id = RCVD_TYPE, .session_id = connection_data.session_id};
+        bytes_written = sendto(socket_fd, &rcvd_pck, sizeof(rcvd_pck),
+                                    flags, (struct sockaddr*)&client_addr, addr_length);
+        if(bytes_written < 0) {
+            close(socket_fd);
+            syserr("Failed to send a RCVD package.");
+        }
+        else if(bytes_written != sizeof(connection_data)) {
+            close(socket_fd);
+            fatal("Incomplete send.");
+        }
     }
 }
