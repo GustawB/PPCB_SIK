@@ -15,7 +15,7 @@
 #include "common.h"
 #include "err.h"
 
-void run_tcp_client(struct sockaddr_in* server_addr, const char* data, 
+void run_udp_client(struct sockaddr_in* server_addr, const char* data, 
                     uint64_t data_length, uint64_t session_id) {
     // Create a socket.
     int socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -25,11 +25,13 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
 
     // Send the CONN package.
     int flags = 0;
-    socklen_t addr_length = (socklen_t)sizeof(server_addr);
+    socklen_t addr_length = (socklen_t)sizeof(*server_addr);
     CONN connection_data = {.pkt_type_id = CONN_TYPE, .session_id = session_id,
-                            .prot_id = UDP_PROT, .data_length = data_length};
-    ssize_t bytes_written = sendto(socket_fd, &connection_data, sizeof(connection_data),
-                                    flags, (struct sockaddr*)&server_addr, addr_length);
+                            .prot_id = UDP_PROT_ID, .data_length = data_length};
+    char* sex = malloc(sizeof(connection_data));
+    memset(sex, 'y', sizeof(connection_data));
+    ssize_t bytes_written = sendto(socket_fd, sex, sizeof(connection_data),
+                                    flags, (struct sockaddr*)server_addr, addr_length);
     if(bytes_written < 0) {
         close(socket_fd);
         syserr("Failed to send a CONN package.");
@@ -39,7 +41,7 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
         fatal("Incomplete send.");
     }
 
-    // Get the CONACK package.
+    // Get the CONACC package.
     CONACC ack_pck;
     ssize_t bytes_read = recvfrom(socket_fd, &ack_pck,
                                     sizeof(ack_pck), flags,
@@ -48,7 +50,11 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
     if (bytes_read < 0) {
         // Failed to establish a connection.
         close(socket_fd);
-        syserr("Failed to read CONACC package");
+        syserr("Recvfrom() CONACC failed.");
+    }
+    else if (bytes_read != sizeof(ack_pck)) {
+        close(socket_fd);
+        fatal("Failed to read CONACC");
     }
 
     printf("SENDING DAAAAAAAAAAAAAAAAAAAAAAAAAAATTTAAAAA\n");

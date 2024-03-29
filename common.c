@@ -90,14 +90,20 @@ ssize_t write_n_bytes(int fd, void* dsptr, size_t n) {
     return n - bytes_left;
 }
 
-struct sockaddr_in get_server_address(char const *host, uint16_t port) {
+struct sockaddr_in get_server_address(char const *host, uint16_t port, int8_t protocol_id) {
     struct addrinfo hints;
     // Malloc would require me to worry about freeing the memory later,
     // and I don't need pointer arithmetics.
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
+    if (protocol_id == TCP_PROT_ID) {
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_protocol = IPPROTO_TCP;
+    }
+    else {
+        hints.ai_socktype = SOCK_DGRAM;
+        hints.ai_protocol = IPPROTO_UDP;
+    }
 
     struct addrinfo* addr_res;
     int errcode = getaddrinfo(host, NULL, &hints, &addr_res);

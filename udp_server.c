@@ -55,7 +55,7 @@ void run_udp_server(uint16_t port) {
             close(socket_fd);
             syserr("Failed to send a CONACC package.");
         }
-        else if(bytes_written != sizeof(connection_data)) {
+        else if(bytes_written != sizeof(resp)) {
             close(socket_fd);
             fatal("Incomplete send.");
         }
@@ -70,7 +70,7 @@ void run_udp_server(uint16_t port) {
             close(socket_fd);
             syserr("Failed to send a RCVD package.");
         }
-        else if(bytes_written != sizeof(connection_data)) {
+        else if(bytes_written != sizeof(rcvd_pck)) {
             close(socket_fd);
             fatal("Incomplete send.");
         }

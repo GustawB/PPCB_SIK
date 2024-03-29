@@ -12,6 +12,7 @@
 
 #include "protconst.h"
 #include "tcp_client.h"
+#include "udp_client.h"
 #include "common.h"
 #include "err.h"
 
@@ -28,10 +29,6 @@ int main(int argc, char* argv[]) {
     char* input_data;
     size_t n = 0;
     uint64_t data_length = getline(&input_data, &n, stdin);
-    if (data_length > 0) {
-        printf("%s", input_data);
-    }
-    printf("%ld\n", data_length);
 
     // Generate a random session indetificator.
     time_t t;
@@ -41,8 +38,14 @@ int main(int argc, char* argv[]) {
     // Start the appropriate server.
     const char* host_name = argv[2];
     uint16_t port = read_port(argv[3]);
-    struct sockaddr_in server_addr = get_server_address(host_name, port);
-    run_tcp_client(&server_addr, input_data, data_length, session_id);
+    if (strcmp(argv[1], TCP_PROT) == 0) {
+        struct sockaddr_in server_addr = get_server_address(host_name, port, TCP_PROT_ID);
+        run_tcp_client(&server_addr, input_data, data_length, session_id);
+    }
+    else {
+        struct sockaddr_in server_addr = get_server_address(host_name, port, UDP_PROT_ID);
+        run_udp_client(&server_addr, input_data, data_length, session_id);
+    }
 
     free(input_data);
 }
