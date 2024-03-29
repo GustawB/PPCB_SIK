@@ -9,6 +9,10 @@
 #define UDP_PROT "udp"
 #define UDPR_PROT "udpr"
 
+#define TCP_PROT_ID 1
+#define UDP_PROT_ID 2
+#define UDPR_PROT_ID 3
+
 #define PCK_SIZE 64000
 
 #define CONN_TYPE 1

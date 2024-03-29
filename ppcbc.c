@@ -11,7 +11,7 @@
 #include <sys/types.h>
 
 #include "protconst.h"
-#include "TCP_Client.h"
+#include "tcp_client.h"
 #include "common.h"
 #include "err.h"
 

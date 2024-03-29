@@ -10,7 +10,7 @@
 #include <sys/types.h>
 
 #include "protconst.h"
-#include "TCP_Server.h"
+#include "tcp_server.h"
 #include "common.h"
 #include "err.h"
 
