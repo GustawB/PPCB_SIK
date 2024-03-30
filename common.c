@@ -141,3 +141,55 @@ bool assert_sendto(ssize_t result, ssize_t to_cmp, int socket_fd) {
     }
     return false;
 }
+
+bool assert_write(ssize_t result, ssize_t to_cmp, int server_fd, int client_fd) {
+    if(result < 0) {
+        if (errno == EPIPE) {
+            // Connection closed.
+            error("Client closed a connection.");
+            return true;
+        }
+        else {
+            if (server_fd >= 0) {
+                close(server_fd);
+            }
+            if (client_fd >= 0) {
+                close(client_fd);
+            }
+            syserr("Package send failed");
+        }
+    }
+    else if ((size_t) result !=  to_cmp) {
+        error("Incomplete CONACC send");
+        return true;
+    }
+    return false;
+}
+
+bool assert_write(ssize_t result, ssize_t to_cmp, int server_fd, int client_fd) {
+    if (result < 0) {
+        if (server_fd >= 0) {
+            close(server_fd);
+        }
+        if (client_fd >= 0) {
+            close(client_fd);
+        }
+        syserr("Failed to write data");
+    }
+    else if (result == 0) {
+        // Connection closed.
+        if (client_fd >= 0) {
+            close(client_fd);
+        }
+        error("Connection closed");
+        return true;
+    }
+    else if (result != to_cmp) {
+        if (client_fd >= 0) {
+            close(client_fd);
+        }
+        error("Incomplete read");
+        return true;
+    }
+    return false;
+}

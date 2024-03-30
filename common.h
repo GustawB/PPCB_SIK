@@ -33,6 +33,8 @@ void init_sockaddr(struct sockaddr_in* addr, uint16_t port);
 struct sockaddr_in get_server_address(char const *host, uint16_t port, int8_t protocol_id);
 
 bool assert_sendto(ssize_t result, ssize_t to_cmp, int socket_fd);
+bool assert_write(ssize_t result, ssize_t to_cmp, int server_fd, int client_fd);
+bool assert_read(ssize_t result, ssize_t to_cmp, int server_fd, int client_fd);
 
 typedef struct __attribute__((__packed__)) {
     uint8_t pkt_type_id;

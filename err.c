@@ -48,23 +48,3 @@ void error(const char* fmt, ...) {
     }
     fprintf(stderr, "\n");
 }
-
-bool assert_read(int16_t ret_val, size_t ds_size) {
-    if (ret_val < 0) { // Some kind of error occured.
-        if (errno == EAGAIN) {
-            error("Connection timeout; finishing execution...");
-            return false;
-        }
-        else{
-            error("read() in read_n_bytes() failed.");
-            return false;
-        }
-
-    }
-    else if ((size_t)ret_val < ds_size) {
-        error("Incomplete read.");
-        return false;
-    }
-
-    return true;
-}
