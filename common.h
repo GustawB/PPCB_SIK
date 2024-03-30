@@ -3,6 +3,7 @@
 
 #include <inttypes.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include <sys/types.h>
 
 #define TCP_PROT "tcp"
@@ -30,6 +31,8 @@ void init_data_pck(uint64_t session_id, uint64_t pck_number,
                                 uint32_t data_size, char* data_pck, const char* data);
 void init_sockaddr(struct sockaddr_in* addr, uint16_t port);
 struct sockaddr_in get_server_address(char const *host, uint16_t port, int8_t protocol_id);
+
+bool assert_sendto(ssize_t result, ssize_t to_cmp, int socket_fd);
 
 typedef struct __attribute__((__packed__)) {
     uint8_t pkt_type_id;

@@ -123,3 +123,21 @@ struct sockaddr_in get_server_address(char const *host, uint16_t port, int8_t pr
 
     return send_addr;
 }
+
+bool assert_sendto(ssize_t result, ssize_t to_cmp, int socket_fd) {
+    if(result < 0) {
+        if (errno == EPIPE) {
+            error("Server closed a connection");
+            return true;
+        }
+        else {
+            close(socket_fd);
+            syserr("Failed to send a package.");
+        }
+    }
+    else if(result != to_cmp) {
+        error("Incomplete send.");
+        return true;
+    }
+    return false;
+}

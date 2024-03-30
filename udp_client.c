@@ -59,7 +59,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
     }
 
     printf("SENDING DATA\n");
-
+    sleep(10);
     // Send data to the server.
     uint64_t pck_number = 0;
     const char* data_ptr = data;

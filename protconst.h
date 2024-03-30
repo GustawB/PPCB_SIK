@@ -2,7 +2,7 @@
 #define PROTCONST_H
 
 // In seconds
-#define MAX_WAIT 10
-#define MAX_RETRANSMITS 10
+#define MAX_WAIT 5
+#define MAX_RETRANSMITS 5
 
 #endif

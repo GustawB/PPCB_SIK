@@ -65,9 +65,13 @@ void run_tcp_server(uint16_t port) {
         CONN connect_data;
         ssize_t bytes_read = read_n_bytes(client_fd, &connect_data, sizeof(connect_data));
         if (bytes_read < 0) {
-            close(socket_fd);
-            close(client_fd);
-            syserr("CONN read failed");
+            if (errno == EAGAIN) {
+                error("Connection timeout.");
+            }
+            else {
+                close(socket_fd);
+                syserr("CONN read failed");
+            }
         }
         else if (bytes_read != sizeof(connect_data) && bytes_read != 0) {
             error("Incomplete CONN read");
@@ -78,12 +82,16 @@ void run_tcp_server(uint16_t port) {
             CONACC con_ack_data = {.pkt_type_id = CONACC_TYPE, .session_id = connect_data.session_id};
             ssize_t bytes_written = write_n_bytes(client_fd, &con_ack_data, sizeof(con_ack_data));
             if(bytes_written < 0) {
-                close(socket_fd);
-                close(client_fd);
-                syserr("CONACC send failed");
+                if (errno == EPIPE) {
+                    // Connection closed.
+                    error("Client closed a connection.");
+                }
+                else {
+                    close(socket_fd);
+                    syserr("CONACC send failed");
+                }
             }
-            else if ((size_t) bytes_written < sizeof(con_ack_data)) {
-                close(client_fd);
+            else if ((size_t) bytes_written != sizeof(con_ack_data)) {
                 error("Incomplete CONACC send");
             }
             else {
@@ -113,6 +121,7 @@ void run_tcp_server(uint16_t port) {
                         syserr("Failed to read data from client");
                     }
                     else if (bytes_read != size && bytes_read != 0) {
+                        b_connection_closed = true;
                         error("Incomplete data read");
                         break;
                     }
@@ -120,15 +129,23 @@ void run_tcp_server(uint16_t port) {
                         DATA* dt = (DATA*)recv_data;
                         if (dt->pkt_type_id != DATA_TYPE || dt->session_id != connect_data.session_id || 
                             dt->pkt_nr != pck_number || dt->data_size != curr_len) {
-                            // Invalid package, send RJT to the clint and move on.
+                            // Invalid package, send RJT to the client and move on.
                             free(recv_data);
                             RJT error_pck = {.session_id = connect_data.session_id,
                                  .pkt_type_id = RJT_TYPE, .pkt_nr = pck_number};
                             bytes_written = write_n_bytes(client_fd, &error_pck, sizeof(error_pck));
                             if(bytes_written < 0) {
-                                close(socket_fd);
-                                close(client_fd);
-                                syserr("RJT send failed");
+                                if (errno == EPIPE) {
+                                    // Connection closed.
+                                    b_connection_closed = true;
+                                    error("Client closed a connection.");
+                                    break;
+                                }
+                                else {
+                                    close(socket_fd);
+                                    close(client_fd);
+                                    syserr("RJT send failed");
+                                }
                             }
                             else if ((size_t) bytes_written != sizeof(error_pck)) {
                                 b_connection_closed = true;
@@ -142,6 +159,7 @@ void run_tcp_server(uint16_t port) {
                     }
                     else {
                         // Connection closed.
+                        b_connection_closed = true;
                         break;
                     }
                     ++pck_number;
@@ -153,12 +171,17 @@ void run_tcp_server(uint16_t port) {
                     RCVD recv_data_ack = {.pkt_type_id = RCVD_TYPE, .session_id = connect_data.session_id};
                     bytes_written = write_n_bytes(client_fd, &recv_data_ack, sizeof(recv_data_ack));
                     if (bytes_written < 0) {
-                        close(socket_fd);
-                        close(client_fd);
-                        syserr("RCVD send failed");
+                        if (errno == EPIPE) {
+                            error("Client closed a connection.");
+                        }
+                        else{
+                            close(socket_fd);
+                            close(client_fd);
+                            syserr("RCVD send failed");
+                        }
                     }
                     else if ((size_t) bytes_written != sizeof(recv_data_ack)) {
-                        error("Server failed to send the RCVD package to the client.");
+                        error("Incomplete RCVD send");
                     }
                 }
             }
