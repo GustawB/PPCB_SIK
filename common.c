@@ -159,22 +159,32 @@ bool assert_write(ssize_t result, ssize_t to_cmp, int server_fd, int client_fd) 
             syserr("Package send failed");
         }
     }
-    else if ((size_t) result !=  to_cmp) {
+    else if (result !=  to_cmp) {
         error("Incomplete CONACC send");
         return true;
     }
     return false;
 }
 
-bool assert_write(ssize_t result, ssize_t to_cmp, int server_fd, int client_fd) {
+bool assert_read(ssize_t result, ssize_t to_cmp, int server_fd, int client_fd) {
     if (result < 0) {
-        if (server_fd >= 0) {
-            close(server_fd);
+        if (errno == EAGAIN) {
+            // Connection timeout.
+            if (client_fd >= 0) {
+                close(client_fd);
+            }
+            error("Connection timeout");
+            return true;
         }
-        if (client_fd >= 0) {
-            close(client_fd);
+        else {
+            if (server_fd >= 0) {
+                close(server_fd);
+            }
+            if (client_fd >= 0) {
+                close(client_fd);
+            }
+            syserr("Failed to write data");
         }
-        syserr("Failed to write data");
     }
     else if (result == 0) {
         // Connection closed.

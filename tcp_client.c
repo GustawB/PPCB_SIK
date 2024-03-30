@@ -33,29 +33,34 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
         syserr("Client failed to connect to the server");
     }
 
+    // Set timeouts for the server.
+    struct timeval time_options = {.tv_sec = MAX_WAIT, .tv_usec = 0};
+    setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &time_options, sizeof(time_options));
+    setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &time_options, sizeof(time_options));
+
     // Send a CONN package to mark the beginning of the connection.
     CONN connect_data = {.pkt_type_id = CONN_TYPE, .session_id = session_id, .prot_id = TCP_PROT_ID,
                          .data_length = htobe64(data_length)};
     ssize_t bytes_written = write_n_bytes(socket_fd, &connect_data, sizeof(connect_data));
-    if ((size_t) bytes_written < sizeof(connect_data)) {
-        error("Client failed to send a CONN package to the server.");
-        close(socket_fd);
-        return;
-    }
-
-    // Read a CONACC package but only if we managed to send the CONN package.
+    bool b_connection_close = assert_write(bytes_written, sizeof(connect_data), -1, socket_fd);
+    
     CONACC con_ack_data;
-    ssize_t bytes_read = read_n_bytes(socket_fd, &con_ack_data, 
-                            sizeof(con_ack_data));
+    if (!b_connection_close){
+        // Read a CONACC package but only if we managed to send the CONN package.
+        ssize_t bytes_read = read_n_bytes(socket_fd, &con_ack_data, 
+                                sizeof(con_ack_data));
+        b_connection_close = assert_read(bytes_read, sizeof(con_ack_data), -1, socket_fd);
+    }
 
     // If w managed to both send CONN and receive CONACK, we can proceed
     // to the data transfer.
-    if (assert_read(bytes_read, sizeof(con_ack_data))) {
+    if (!b_connection_close && con_ack_data.pkt_type_id == CONACC_TYPE && 
+        con_ack_data.session_id == session_id) {
         printf("Sending data...\n");
 
         uint64_t pck_number = 0;
         const char* data_ptr = data;
-        while(data_length > 0) {
+        while(data_length > 0 && !b_connection_close) {
             // Calculate a size of the data chunk that will be sent
             // in the current package.
             uint32_t curr_len = PCK_SIZE;
@@ -68,17 +73,22 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
             char* data_pck = malloc(pck_size);
             if (data_pck == NULL) { 
                 // malloc failed.
-                break;
+                close(socket_fd);
+                syserr("Malloc failed");
             }
             init_data_pck(session_id, pck_number, 
                                     data_length, data_pck, data_ptr);
 
             // Send the package to the server.
             bytes_written = write_n_bytes(socket_fd, data_pck, pck_size);
-            if ((size_t) bytes_written < sizeof(*data_pck)) {
-                error("Client failed to send a data package to the server.");
-                close(socket_fd);
-                return;
+            b_connection_close = assert_write(bytes_written, pck_size, -1, socket_fd);
+
+            if (b_connection_close && bytes_written == -1){
+                // Connection closed, wait for the RJT package.
+                RJT rjt_pck;
+                ssize_t bytes_read = read_n_bytes(socket_fd, &rjt_pck, 
+                                sizeof(rjt_pck));
+                assert_read(bytes_read, sizeof(rjt_pck), -1, socket_fd);
             }
             
             // Update invariants.
@@ -87,15 +97,16 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
             data_length -= curr_len;
         }
 
-        // Managed to send all the data, now we wait for the RCVD.
-        RCVD recv_data_ack;
-        bytes_read = read_n_bytes(socket_fd, &recv_data_ack,
-                sizeof(recv_data_ack));
-
-        if (!assert_read(bytes_read, sizeof(recv_data_ack))) {
-            error("Failed to receive RCVD package");
+        if (b_connection_close) {
+            // Managed to send all the data, now we wait for the RCVD.
+            RCVD recv_data_ack;
+            ssize_t bytes_read = read_n_bytes(socket_fd, &recv_data_ack,
+                    sizeof(recv_data_ack));
+            assert_read(bytes_read, sizeof(bytes_read), -1, socket_fd);
         }
     }
-
-    close(socket_fd);
+    
+    if(!b_connection_close) {
+        close(socket_fd);
+    }
 }

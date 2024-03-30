@@ -52,29 +52,23 @@ void run_tcp_server(uint16_t port) {
             syserr("Failed to connect with a client");
         }
 
-        // Get the IP address of the client (convert it from binary to string).
-        const char* client_ip = inet_ntoa(client_addr.sin_addr);
-        uint16_t client_port = ntohs(client_addr.sin_port);
-
         // Set timeouts for the client.
         struct timeval time_options = {.tv_sec = MAX_WAIT, .tv_usec = 0};
         setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &time_options, sizeof(time_options));
         setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &time_options, sizeof(time_options));
 
-        bool b_connection_closed = false;
-
         // Get a CONN package.
         CONN connect_data;
         ssize_t bytes_read = read_n_bytes(client_fd, &connect_data, sizeof(connect_data));
-        if(!assert_read(bytes_read, sizeof(connect_data), socket_fd, client_fd)) {
+        bool b_connection_closed = assert_read(bytes_read, sizeof(connect_data), socket_fd, client_fd);
+        if(!b_connection_closed) {
             // Managed to get the CONN package, its time to send CONACC back to the client.
-            uint64_t session_id = connect_data.session_id;
             CONACC con_ack_data = {.pkt_type_id = CONACC_TYPE, .session_id = connect_data.session_id};
             ssize_t bytes_written = write_n_bytes(client_fd, &con_ack_data, sizeof(con_ack_data));
-            if (!assert_write(bytes_written, sizeof(con_ack_data), socket_fd, client_fd)) {
+            b_connection_closed = assert_write(bytes_written, sizeof(con_ack_data), socket_fd, client_fd);
+            if (!b_connection_closed) {
                 // Read data from the client.
                 uint64_t byte_count = be64toh(connect_data.data_length);
-                bool b_connection_closed = false;
                 uint64_t pck_number = 0;
 
                 while(byte_count > 0 && !b_connection_closed) {
@@ -125,6 +119,6 @@ void run_tcp_server(uint16_t port) {
             }
         }
     }
-
+    
     close(socket_fd);
 }
