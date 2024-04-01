@@ -28,9 +28,9 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
     }
 
     // Set timeouts for the server.
-    //struct timeval time_options = {.tv_sec = MAX_WAIT, .tv_usec = 0};
-    //setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &time_options, sizeof(time_options));
-    //setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &time_options, sizeof(time_options));
+    struct timeval time_options = {.tv_sec = MAX_WAIT, .tv_usec = 0};
+    setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &time_options, sizeof(time_options));
+    setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &time_options, sizeof(time_options));
 
     // Send the CONN package.
     int flags = 0;
@@ -46,7 +46,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
         CONACC ack_pck;
         ssize_t bytes_read = recvfrom(socket_fd, &ack_pck,
                                         sizeof(ack_pck), flags,
-                                        (struct sockaddr*)&server_addr,
+                                        (struct sockaddr*)&loc_server_addr,
                                         &addr_length);
         if (bytes_read < 0) {
             // Failed to establish a connection.
@@ -57,6 +57,8 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
             close(socket_fd);
             fatal("Invalid package");
         }
+
+        printf("Received session: %ld; my session: %ld\n", ack_pck.session_id, session_id);
 
         // Send data to the server.
         uint64_t pck_number = 0;

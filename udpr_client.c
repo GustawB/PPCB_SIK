@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 #include <endian.h>
 #include <signal.h>
@@ -17,6 +18,7 @@
 
 void run_udpr_client(const struct sockaddr_in* server_addr, const char* data, 
                     uint64_t data_length, uint64_t session_id) {
+    session_id = 10;
     printf("UDPR CLIENT\n");
     // Create a socket.
     // Using server_addr directly caused problems, so I'm performing
@@ -27,27 +29,35 @@ void run_udpr_client(const struct sockaddr_in* server_addr, const char* data,
         syserr("Failed to create a socket.");
     }
 
+    // Set timeouts for the server.
+    struct timeval time_options = {.tv_sec = MAX_WAIT, .tv_usec = 0};
+    setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &time_options, sizeof(time_options));
+    setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &time_options, sizeof(time_options));
+
     // CONN-CONACK loop
     int flags = 0;
     int retransmit_iter = 0;
     bool b_connecton_closed = false;
-    while (retransmit_iter < MAX_RETRANSMITS && !b_connecton_closed) {
+    while (!b_connecton_closed && retransmit_iter < MAX_RETRANSMITS) {
         socklen_t addr_length = (socklen_t)sizeof(*server_addr);
         CONN connection_data = {.pkt_type_id = CONN_TYPE, .session_id = session_id,
-                                .prot_id = UDP_PROT_ID, .data_length = htobe64(data_length)};
+                                .prot_id = UDPR_PROT_ID, .data_length = htobe64(data_length)};
         ssize_t bytes_written = sendto(socket_fd, &connection_data, sizeof(connection_data),
                                         flags, (struct sockaddr*)&loc_server_addr, addr_length);
         b_connecton_closed = assert_sendto(bytes_written, sizeof(connection_data), socket_fd);
         if (!b_connecton_closed) {
-            // Try to get a CONACK package.
+            // Try to get a CONACC package.
             CONACC conacc_pck;
             ssize_t bytes_read = recvfrom(socket_fd, &conacc_pck,
                                     sizeof(conacc_pck), flags,
-                                    (struct sockaddr*)&server_addr,
+                                    (struct sockaddr*)&loc_server_addr,
                                     &addr_length);
+            printf("Tried to read CONACC: %ld\n", session_id);
             if (bytes_read >= 0 || (bytes_read < 0 && errno != EAGAIN)) {
                 b_connecton_closed = assert_recvfrom(bytes_read, sizeof(conacc_pck), socket_fd);
+                printf("Ugabuga: %ld %ld received session: %ld\n", bytes_read, sizeof(conacc_pck), conacc_pck.session_id);
                 if (!b_connecton_closed && conacc_pck.session_id == session_id) {
+                    printf("bugaUga: %ld %ld\n", bytes_read, sizeof(conacc_pck));
                     // We got CONACC or RJT FROM OUR SESSION.
                     if (conacc_pck.pkt_type_id != CONACC_TYPE) {
                         // RJT
@@ -60,6 +70,8 @@ void run_udpr_client(const struct sockaddr_in* server_addr, const char* data,
 
         ++retransmit_iter;
     }
+
+    printf("UDPR Client got CONACC %d\n", retransmit_iter);
 
     if (!b_connecton_closed && retransmit_iter < MAX_RETRANSMITS) {
         // Connection established. Start data sending loop.
@@ -82,6 +94,8 @@ void run_udpr_client(const struct sockaddr_in* server_addr, const char* data,
             init_data_pck(session_id, pck_number, 
                                     curr_len, data_pck, data_ptr);
             
+            printf("Sending data\n");
+
             // Send data to the server.
             ssize_t bytes_written = sendto(socket_fd, data_pck, pck_size, flags,
                                     (struct sockaddr*)&loc_server_addr, addr_length);

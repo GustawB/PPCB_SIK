@@ -71,6 +71,9 @@ void run_udp_server(uint16_t port) {
                                     flags, (struct sockaddr*)&client_addr, addr_length);
         b_connection_closed = assert_sendto(bytes_written, sizeof(resp), socket_fd);
 
+        printf("Server sent CONACC: %ld\n", resp.session_id);
+        printf("Should sent: %ld\n", connection_data.session_id);
+
         if(!b_connection_closed) {
             // If we managed to send the CONACC, read the data.
             uint64_t pck_number = 0;
@@ -88,7 +91,7 @@ void run_udp_server(uint16_t port) {
                     close(socket_fd);
                     syserr("Malloc failed");
                 }
-                
+                printf("Receiving data\n");
                 ssize_t bytes_read = recvfrom(socket_fd, recv_data, pck_size, flags,
                                     (struct sockaddr*)&client_addr, &addr_length);
                 if (connection_data.prot_id == UDPR_PROT_ID) {
