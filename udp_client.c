@@ -17,6 +17,7 @@
 
 void run_udp_client(const struct sockaddr_in* server_addr, const char* data, 
                     uint64_t data_length, uint64_t session_id) {
+    printf("Started udp client\n");
     // Create a socket.
     // Using server_addr directly caused problems, so I'm performing
     // a local copy of the sockaddr_in structure.
@@ -27,9 +28,9 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
     }
 
     // Set timeouts for the server.
-    struct timeval time_options = {.tv_sec = MAX_WAIT, .tv_usec = 0};
-    setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &time_options, sizeof(time_options));
-    setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &time_options, sizeof(time_options));
+    //struct timeval time_options = {.tv_sec = MAX_WAIT, .tv_usec = 0};
+    //setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &time_options, sizeof(time_options));
+    //setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &time_options, sizeof(time_options));
 
     // Send the CONN package.
     int flags = 0;
@@ -60,7 +61,6 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
         // Send data to the server.
         uint64_t pck_number = 0;
         const char* data_ptr = data;
-        printf("SDFUIOIGFCIGCGIHV\n");
         while(data_length > 0 && !b_connection_closed) {
             // recvfrom can change the value of th eaddr_length,
             // so I have to update it here over and over again.
@@ -84,6 +84,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
                                     (struct sockaddr*)&loc_server_addr, addr_length);
             b_connection_closed = assert_sendto(bytes_written, pck_size, socket_fd);
 
+            printf("Pck number: %ld\n", pck_number);
             ++pck_number;
             data_length -= curr_len;
             data_ptr += curr_len;

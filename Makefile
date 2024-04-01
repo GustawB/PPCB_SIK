@@ -9,8 +9,8 @@ TARGET2 = ppcbs
 
 all: $(TARGET1) $(TARGET2)
 
-$(TARGET1): $(TARGET1).o err.o tcp_client.o udp_client.o common.o
-$(TARGET2): $(TARGET2).o err.o tcp_server.o udp_server.o udpr_client.o common.o
+$(TARGET1): $(TARGET1).o err.o tcp_client.o udp_client.o udpr_client.o common.o
+$(TARGET2): $(TARGET2).o err.o tcp_server.o udp_server.o  common.o
 
 err.o: err.c err.h
 common.o: common.c common.h

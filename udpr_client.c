@@ -62,7 +62,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, const char* data,
     }
 
     if (!b_connecton_closed && retransmit_iter < MAX_RETRANSMITS) {
-        // Connection establisher. Start data sending loop.
+        // Connection established. Start data sending loop.
         uint64_t pck_number = 0;
         const char* data_ptr = data;
         bool b_was_rcvd_received = false;
