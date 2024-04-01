@@ -13,6 +13,7 @@
 #include "protconst.h"
 #include "tcp_client.h"
 #include "udp_client.h"
+#include "udpr_client.h"
 #include "common.h"
 #include "err.h"
 
@@ -42,9 +43,13 @@ int main(int argc, char* argv[]) {
         struct sockaddr_in server_addr = get_server_address(host_name, port, TCP_PROT_ID);
         run_tcp_client(&server_addr, input_data, data_length, session_id);
     }
-    else {
+    else if (strcmp(argv[1], UDP_PROT) == 0) {
         struct sockaddr_in server_addr = get_server_address(host_name, port, UDP_PROT_ID);
         run_udp_client(&server_addr, input_data, data_length, session_id);
+    }
+    else { // UDPR protocol.
+        struct sockaddr_in server_addr = get_server_address(host_name, port, UDPR_PROT_ID);
+        run_udpr_client(&server_addr, input_data, data_length, session_id);
     }
 
     free(input_data);

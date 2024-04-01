@@ -98,7 +98,7 @@ void run_udp_server(uint16_t port) {
                         // Valid data.
                         break;
                     }
-                    else if(dt->pkt_type_id == CONN_TYPE) {
+                    else if(dt->pkt_type_id == CONN_TYPE && dt->session_id != connection_data.session_id) {
                         // Someone wants to connect, send CONRJT.
                         CONRJT conrjt_pck = {.pkt_type_id = CONRJT_TYPE, .session_id = dt->session_id};
                         bytes_written = sendto(socket_fd, &resp, sizeof(resp),

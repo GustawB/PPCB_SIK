@@ -142,9 +142,30 @@ bool assert_sendto(ssize_t result, ssize_t to_cmp, int socket_fd) {
     return false;
 }
 
-//bool assert_recvfrom(ssize_t result, ssize_t to_cmp, int socket_fd) {
-  //  return false;
-//}
+bool assert_recvfrom(ssize_t result, ssize_t to_cmp, int socket_fd) {
+    if (result < 0) {
+        if (errno == EAGAIN) {
+            error("Connection timeout");
+            return true;
+        }
+        else{
+            if (socket_fd >= 0) {
+                close(socket_fd);
+            }
+            syserr("Failed to read data");
+        }
+    }
+    else if (result == 0) {
+        error("Client closed a connection");
+        return true;
+    }
+    else if(result != to_cmp) {
+        error("Incomplete data read");
+        return true;
+    }
+
+    return false;
+}
 
 bool assert_write(ssize_t result, ssize_t to_cmp, int server_fd, int client_fd) {
     if(result < 0) {
