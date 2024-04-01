@@ -73,6 +73,8 @@ void run_udpr_client(const struct sockaddr_in* server_addr, const char* data,
 
     printf("UDPR Client got CONACC %d\n", retransmit_iter);
 
+    sleep(100);
+
     if (!b_connecton_closed && retransmit_iter < MAX_RETRANSMITS) {
         // Connection established. Start data sending loop.
         uint64_t pck_number = 0;

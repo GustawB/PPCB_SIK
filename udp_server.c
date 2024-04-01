@@ -63,7 +63,7 @@ void run_udp_server(uint16_t port) {
                 }
                 // Otherwise, we got something else, ignore the fucker.
             }
-        }
+        }        
 
         // Send CONACC back to the client.
         CONACC resp = {.pkt_type_id = CONACC_TYPE, .session_id = connection_data.session_id};
@@ -95,7 +95,7 @@ void run_udp_server(uint16_t port) {
                 ssize_t bytes_read = recvfrom(socket_fd, recv_data, pck_size, flags,
                                     (struct sockaddr*)&client_addr, &addr_length);
                 if (connection_data.prot_id == UDPR_PROT_ID) {
-                    int retransmits_counter = 0;
+                    int retransmits_counter = 1;
                     // Try to get the data.
                     while(!b_connection_closed) {
                         if ((bytes_read < 0 && errno != EAGAIN) || bytes_read == 0) {
@@ -113,7 +113,6 @@ void run_udp_server(uint16_t port) {
                                 // I'm not checking this in loop because if we make the last retransmit,
                                 // we still want to see if it had any positive inpact on us.
                                 b_connection_closed = true; 
-                                break;
                             }
                             else if (dt->pkt_type_id == DATA_TYPE && dt->pkt_nr == pck_number - 1 &&
                                 dt->session_id == connection_data.session_id) {
@@ -142,6 +141,11 @@ void run_udp_server(uint16_t port) {
                             // Else: some garbage, ignore it.
                         }  
                         else {// errno == EAGAIN
+                            if (retransmits_counter == MAX_RETRANSMITS) {
+                                // Fuck this shit I'm out.
+                                b_connection_closed = true;
+                                break;
+                            }
                             if (pck_number == 0) {
                                 // Retransmit CONACC.
                                 ssize_t bytes_written = sendto(socket_fd, &resp, sizeof(resp),
