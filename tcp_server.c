@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <signal.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -63,6 +64,7 @@ void run_tcp_server(uint16_t port) {
         bool b_connection_closed = assert_read(bytes_read, sizeof(connect_data), socket_fd, client_fd);
         if (connect_data.pkt_type_id != CONN_TYPE || connect_data.prot_id != TCP_PROT_ID) {
             // We got something wrong. Close the connection.
+            error("Wanted CONN TCP, got something else");
             b_connection_closed = true;
         }
         if(!b_connection_closed) {
@@ -105,9 +107,24 @@ void run_tcp_server(uint16_t port) {
                         }
                         else  {
                             byte_count -= dt->data_size;
-                            printf("Data: %s\n", recv_data + 21);
+                            char* data_to_print = malloc(curr_len + 1);
+                            if (data_to_print == NULL) {
+                                close(socket_fd);
+                                close(client_fd);
+                                fatal("Malloc in data reading failed.");
+                            }
+
+                            // Create a valid string.
+                            memcpy(data_to_print, recv_data + 21, curr_len);
+                            char ch = '\0';
+                            memcpy(data_to_print + curr_len, &ch, 1);
+                            printf("Data: %s", data_to_print);
                             free(recv_data);
+                            free(data_to_print);
                         }
+                    }
+                    else {
+                        free(recv_data);
                     }
                     ++pck_number;
                 }
@@ -120,8 +137,10 @@ void run_tcp_server(uint16_t port) {
                     b_connection_closed = assert_write(bytes_written, sizeof(recv_data_ack), socket_fd, client_fd);
                 }
 
-                // Close the connection.
-                close(client_fd);
+                if (!b_connection_closed) {
+                    // Close the connection.
+                    close(client_fd);
+                }
             }
         }
     }

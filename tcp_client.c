@@ -87,6 +87,7 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
             ++pck_number;
             data_ptr += curr_len;
             data_length -= curr_len;
+            free(data_pck);
         }
 
         if (!b_connection_close) {
@@ -94,7 +95,7 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
             RCVD recv_data_ack;
             ssize_t bytes_read = read_n_bytes(socket_fd, &recv_data_ack,
                     sizeof(recv_data_ack));
-            b_connection_close = (bytes_read, sizeof(bytes_read), -1, socket_fd);
+            b_connection_close = assert_read(bytes_read, sizeof(recv_data_ack), -1, socket_fd);
             if (!b_connection_close && recv_data_ack.pkt_type_id == RJT_TYPE && 
                 recv_data_ack.session_id == session_id) {
                 // We got rejected.
@@ -102,7 +103,7 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
             }
             else if (!b_connection_close && (recv_data_ack.pkt_type_id != RCVD_TYPE ||
                 recv_data_ack.session_id != session_id)) {
-                // We received invlid package.
+                // We received invalid package.
                 error("Invalid package");
             }
         }

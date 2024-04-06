@@ -41,7 +41,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
                                     flags, (struct sockaddr*)&loc_server_addr, addr_length);
     bool b_connection_closed = assert_sendto(bytes_written, sizeof(connection_data), socket_fd);
 
-    sleep(10);
+    //sleep(10);
 
     if (!b_connection_closed) {
         // Get the CONACC package.
