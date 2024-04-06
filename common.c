@@ -123,109 +123,87 @@ struct sockaddr_in get_server_address(char const *host, uint16_t port, int8_t pr
     return send_addr;
 }
 
-bool assert_sendto(ssize_t result, ssize_t to_cmp, int socket_fd) {
-    if(result < 0) {
-        if (errno == EPIPE) {
-            error("Server closed a connection");
-            return true;
-        }
-        else {
-            close(socket_fd);
-            syserr("Failed to send a package.");
-        }
+void cleanup(char* data_to_cleanup) {
+    if (data_to_cleanup != NULL) {
+        free(data_to_cleanup);
     }
-    else if(result != to_cmp) {
-        error("Incomplete send.");
-        return true;
-    }
-    return false;
 }
 
-bool assert_recvfrom(ssize_t result, ssize_t to_cmp, int socket_fd) {
-    if (result < 0) {
-        if (errno == EAGAIN) {
-            error("Connection timeout");
-            return true;
-        }
-        else{
-            if (socket_fd >= 0) {
-                close(socket_fd);
-            }
-            syserr("Failed to read data");
-        }
+void close_fd(int fd) {
+    if (fd >= 0) {
+        close(fd);
     }
-    else if (result == 0) {
-        error("Client closed a connection");
-        return true;
-    }
-    else if(result != to_cmp) {
-        error("Incomplete data read");
-        return true;
-    }
-
-    printf("sex\n");
-    return false;
 }
 
-bool assert_write(ssize_t result, ssize_t to_cmp, int server_fd, int client_fd) {
+bool assert_write(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup) {
     if(result < 0) {
+        cleanup(data_to_cleanup);
         if (errno == EPIPE) {
             // Connection closed.
-            error("Client closed a connection.");
+            close_fd(secondary_fd);
+            error("Connection closed.");
             return true;
         }
         else {
-            if (server_fd >= 0) {
-                close(server_fd);
-            }
-            if (client_fd >= 0) {
-                close(client_fd);
-            }
+            close_fd(main_fd);
+            close_fd(secondary_fd);
             syserr("Package send failed");
         }
     }
     else if (result !=  to_cmp) {
-        error("Incomplete CONACC send");
+        close_fd(secondary_fd);
+        cleanup(data_to_cleanup);
+        error("Incomplete send");
         return true;
     }
     return false;
 }
 
-bool assert_read(ssize_t result, ssize_t to_cmp, int server_fd, int client_fd) {
+bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup) {
     if (result < 0) {
+        cleanup(data_to_cleanup);
         if (errno == EAGAIN) {
             // Connection timeout.
-            if (client_fd >= 0) {
-                close(client_fd);
-            }
+            close_fd(secondary_fd);
             error("Connection timeout");
             return true;
         }
         else {
-            if (server_fd >= 0) {
-                close(server_fd);
-            }
-            if (client_fd >= 0) {
-                close(client_fd);
-            }
+            close_fd(main_fd);
+            close_fd(secondary_fd);
             syserr("Failed to write data");
         }
     }
     else if (result == 0) {
         // Connection closed.
-        if (client_fd >= 0) {
-            close(client_fd);
-        }
-        printf("Ssagshdghafcgh\n");
+        cleanup(data_to_cleanup);
+        close_fd(secondary_fd);
         error("Connection closed");
         return true;
     }
     else if (result != to_cmp) {
-        if (client_fd >= 0) {
-            close(client_fd);
-        }
+        cleanup(data_to_cleanup);
+        close_fd(secondary_fd);
         error("Incomplete read");
         return true;
     }
     return false;
+}
+
+void assert_malloc(char* data, int main_fd, int secondary_fd, char* data_to_cleanup) {
+    if (data == NULL) {
+        close_fd(main_fd);
+        close_fd(secondary_fd);
+        cleanup(data_to_cleanup);
+        fatal("Malloc failed");
+    }
+}
+
+void print_data(char* data, char* buffer, size_t len) {
+    // Create a valid string.
+    memcpy(buffer, data, len);
+    char ch = '\0';
+    memcpy(buffer + len, &ch, 1);
+    printf("Data: %s", buffer);
+    free(buffer);
 }

@@ -17,7 +17,9 @@
 
 void run_udp_client(const struct sockaddr_in* server_addr, const char* data, 
                     uint64_t data_length, uint64_t session_id) {
-    printf("Started udp client\n");
+    // Ignore SIGPIPE signals; stays for now.
+    signal(SIGPIPE, SIG_IGN);
+
     // Create a socket.
     // Using server_addr directly caused problems, so I'm performing
     // a local copy of the sockaddr_in structure.
@@ -39,9 +41,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
                             .prot_id = UDP_PROT_ID, .data_length = htobe64(data_length)};
     ssize_t bytes_written = sendto(socket_fd, &connection_data, sizeof(connection_data),
                                     flags, (struct sockaddr*)&loc_server_addr, addr_length);
-    bool b_connection_closed = assert_sendto(bytes_written, sizeof(connection_data), socket_fd);
-
-    //sleep(10);
+    bool b_connection_closed = assert_write(bytes_written, sizeof(connection_data), socket_fd, -1, NULL);
 
     if (!b_connection_closed) {
         // Get the CONACC package.
@@ -50,17 +50,19 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
                                         sizeof(ack_pck), flags,
                                         (struct sockaddr*)&loc_server_addr,
                                         &addr_length);
-        if (bytes_read < 0) {
-            // Failed to establish a connection.
-            close(socket_fd);
-            syserr("Recvfrom failed");
+        b_connection_closed = assert_read(bytes_read, sizeof(ack_pck), socket_fd, -1, NULL);
+        if (!b_connection_closed && ack_pck.pkt_type_id == CONRJT_TYPE && 
+            ack_pck.session_id == session_id) {
+            // We got rejected by the server.
+            b_connection_closed = true;
+            error("Connection rejected");
         }
-        else if (bytes_read != sizeof(ack_pck)) {
-            close(socket_fd);
-            fatal("Invalid package");
+        else if (!b_connection_closed && (ack_pck.pkt_type_id != CONACC_TYPE ||
+                ack_pck.session_id != session_id)) {
+            // We got something invalid, end with error.
+            b_connection_closed = true;
+            error("Wanted CONACC, got something else");
         }
-
-        printf("Received session: %ld; my session: %ld\n", ack_pck.session_id, session_id);
 
         // Send data to the server.
         uint64_t pck_number = 0;
@@ -77,21 +79,21 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
             // Initialize a package.
             ssize_t pck_size = sizeof(DATA) - 8 + curr_len;
             char* data_pck = malloc(pck_size);
-            if (data_pck == NULL) {
-                close(socket_fd);
-                fatal("Malloc failed");
-            }
+            assert_malloc(data_pck, socket_fd, -1, NULL);
 
             init_data_pck(session_id, pck_number, 
                                     curr_len, data_pck, data_ptr);
             bytes_written = sendto(socket_fd, data_pck, pck_size, flags,
                                     (struct sockaddr*)&loc_server_addr, addr_length);
-            b_connection_closed = assert_sendto(bytes_written, pck_size, socket_fd);
+            b_connection_closed = assert_write(bytes_written, pck_size, socket_fd, -1, data_pck);
 
-            printf("Pck number: %ld\n", pck_number);
-            ++pck_number;
-            data_length -= curr_len;
-            data_ptr += curr_len;
+            if (!b_connection_closed) {
+                printf("Pck number: %ld\n", pck_number);
+                free(data_pck);
+                ++pck_number;
+                data_length -= curr_len;
+                data_ptr += curr_len;
+            }
         }
 
         if (!b_connection_closed) {
@@ -101,17 +103,20 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
                                             sizeof(rcvd_pck), flags,
                                             (struct sockaddr*)&loc_server_addr,
                                             &addr_length);
-            if (bytes_read < 0) {
-                close(socket_fd);
-                syserr("Recvfrom failed");
+            b_connection_closed = assert_read(bytes_read, sizeof(rcvd_pck), socket_fd, -1, NULL);
+            if(!b_connection_closed && rcvd_pck.pkt_type_id  == RJT_TYPE &&
+                rcvd_pck.session_id == session_id) {
+                // Our data got rejected.
+                error("Data rejected");
             }
-            else if (bytes_read != sizeof(rcvd_pck)) {
-                close(socket_fd);
-                syserr("Invalid package");
+            else if (!b_connection_closed && (rcvd_pck.pkt_type_id != RCVD_TYPE ||
+                    rcvd_pck.session_id != session_id)) {
+                // We got invalid package.
+                error("Invalid package");
             }
+
         }
     }
 
     close(socket_fd);
-    printf("Client ended\n");
 }
