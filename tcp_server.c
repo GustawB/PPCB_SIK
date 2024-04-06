@@ -61,6 +61,10 @@ void run_tcp_server(uint16_t port) {
         CONN connect_data;
         ssize_t bytes_read = read_n_bytes(client_fd, &connect_data, sizeof(connect_data));
         bool b_connection_closed = assert_read(bytes_read, sizeof(connect_data), socket_fd, client_fd);
+        if (connect_data.pkt_type_id != CONN_TYPE || connect_data.prot_id != TCP_PROT_ID) {
+            // We got something wrong. Close the connection.
+            b_connection_closed = true;
+        }
         if(!b_connection_closed) {
             // Managed to get the CONN package, its time to send CONACC back to the client.
             CONACC con_ack_data = {.pkt_type_id = CONACC_TYPE, .session_id = connect_data.session_id};
@@ -99,9 +103,11 @@ void run_tcp_server(uint16_t port) {
                             b_connection_closed = assert_write(bytes_written, sizeof(error_pck), 
                                                                 socket_fd, client_fd);
                         }
-                        byte_count -= dt->data_size;
-                        printf("Data: %s\n", recv_data + 21);
-                        free(recv_data);
+                        else  {
+                            byte_count -= dt->data_size;
+                            printf("Data: %s\n", recv_data + 21);
+                            free(recv_data);
+                        }
                     }
                     ++pck_number;
                 }

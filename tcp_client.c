@@ -82,14 +82,6 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
             // Send the package to the server.
             bytes_written = write_n_bytes(socket_fd, data_pck, pck_size);
             b_connection_close = assert_write(bytes_written, pck_size, -1, socket_fd);
-
-            if (b_connection_close && bytes_written == -1){
-                // Connection closed, wait for the RJT package.
-                RJT rjt_pck;
-                ssize_t bytes_read = read_n_bytes(socket_fd, &rjt_pck, 
-                                sizeof(rjt_pck));
-                assert_read(bytes_read, sizeof(rjt_pck), -1, socket_fd);
-            }
             
             // Update invariants.
             ++pck_number;
@@ -97,12 +89,22 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
             data_length -= curr_len;
         }
 
-        if (b_connection_close) {
+        if (!b_connection_close) {
             // Managed to send all the data, now we wait for the RCVD.
             RCVD recv_data_ack;
             ssize_t bytes_read = read_n_bytes(socket_fd, &recv_data_ack,
                     sizeof(recv_data_ack));
-            assert_read(bytes_read, sizeof(bytes_read), -1, socket_fd);
+            b_connection_close = (bytes_read, sizeof(bytes_read), -1, socket_fd);
+            if (!b_connection_close && recv_data_ack.pkt_type_id == RJT_TYPE && 
+                recv_data_ack.session_id == session_id) {
+                // We got rejected.
+                error("Rejection"); 
+            }
+            else if (!b_connection_close && (recv_data_ack.pkt_type_id != RCVD_TYPE ||
+                recv_data_ack.session_id != session_id)) {
+                // We received invlid package.
+                error("Invalid package");
+            }
         }
     }
     
