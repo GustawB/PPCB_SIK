@@ -50,10 +50,12 @@ int main(int argc, char* argv[]) {
         memcpy(tmp, line, bytes_read);
         free(line);
         line = NULL;
+        free(line);
+        line = NULL;
     }
+    free(line);
     if (errno != 0) {
         free(data);
-        free(line);
         fatal("Geline failed");
     }
     
@@ -78,7 +80,9 @@ int main(int argc, char* argv[]) {
         run_udpr_client(&server_addr, data, data_length, session_id);
     }
     
-    free(data);
+    if (data_length > 0) {
+        free(data);
+    }
 
     return 0;
 }
