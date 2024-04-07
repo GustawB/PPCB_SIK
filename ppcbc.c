@@ -9,6 +9,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <errno.h>
 
 #include "protconst.h"
 #include "tcp_client.h"
@@ -27,9 +28,34 @@ int main(int argc, char* argv[]) {
     }
 
     // Read data from the standard input.
-    char* input_data = NULL;
+    char* line = NULL;
+    char* data = NULL;
     size_t n = 0;
-    uint64_t data_length = getline(&input_data, &n, stdin);
+    ssize_t bytes_read;
+    uint64_t data_length = 0;
+    // Read lines from standard input until EOF is encountered
+    while ((bytes_read = getline(&line, &n, stdin)) != -1) {
+        // Process each line here
+        data_length += bytes_read;
+        char* tmp = malloc(data_length);
+        if (tmp == NULL) {
+            free(line);
+            free(data);
+            fatal("Malloc failed");
+        }
+        memcpy(tmp, data, data_length - bytes_read);
+        free(data);
+        data = tmp;
+        tmp += data_length - bytes_read;
+        memcpy(tmp, line, bytes_read);
+        free(line);
+        line = NULL;
+    }
+    if (errno != 0) {
+        free(data);
+        free(line);
+        fatal("Geline failed");
+    }
     
     // Generate a random session indetificator.
     time_t t;
@@ -41,18 +67,18 @@ int main(int argc, char* argv[]) {
     uint16_t port = read_port(argv[3]);
     if (strcmp(argv[1], "tcp") == 0) {
         struct sockaddr_in server_addr = get_server_address(host_name, port, TCP_PROT_ID);
-        run_tcp_client(&server_addr, input_data, data_length, session_id);
+        run_tcp_client(&server_addr, data, data_length, session_id);
     }
     else if (strcmp(argv[1], "udp") == 0) {
         struct sockaddr_in server_addr = get_server_address(host_name, port, UDP_PROT_ID);
-        run_udp_client(&server_addr, input_data, data_length, session_id);
+        run_udp_client(&server_addr, data, data_length, session_id);
     }
     else { // UDPR protocol.
         struct sockaddr_in server_addr = get_server_address(host_name, port, UDPR_PROT_ID);
-        run_udpr_client(&server_addr, input_data, data_length, session_id);
+        run_udpr_client(&server_addr, data, data_length, session_id);
     }
     
-    free(input_data);
+    free(data);
 
     return 0;
 }
