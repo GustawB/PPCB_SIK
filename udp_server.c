@@ -68,6 +68,8 @@ void run_udp_server(uint16_t port) {
                 addr_length = (socklen_t)sizeof(client_addr);
                 uint32_t curr_len = calc_pck_size(byte_count);
 
+                //printf("Data chunk size: %d; Data left: %ld\n", curr_len, byte_count);
+
                 ssize_t pck_size = sizeof(DATA) - 8 + curr_len;
                 char* recv_data = malloc(pck_size);
                 assert_malloc(recv_data, socket_fd, -1, NULL, NULL);
@@ -77,7 +79,7 @@ void run_udp_server(uint16_t port) {
                     int retransmits_counter = 1;
                 // Try to get the data.
                 while(!b_connection_closed) {
-                    printf("Retransmit %d %d\n", retransmits_counter, MAX_RETRANSMITS);
+                    //printf("Retransmit %d %d\n", retransmits_counter, MAX_RETRANSMITS);
                     if ((bytes_read < 0 && errno != EAGAIN) || bytes_read == 0) { // Will produce error message
                         b_connection_closed = assert_read(bytes_read, pck_size, socket_fd, -1, recv_data, NULL);
                     }
@@ -166,6 +168,8 @@ void run_udp_server(uint16_t port) {
                     DATA* dt = (DATA*)recv_data;
                     byte_count -= dt->data_size;
                     ++pck_number;
+
+                    //printf("Got package\n");
 
                     char* data_to_print = malloc(curr_len + 1);
                     assert_malloc(data_to_print, socket_fd, -1, NULL, NULL);

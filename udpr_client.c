@@ -94,7 +94,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
                 retransmit_iter = 1;
                 // DATA-ACC loop.
                 while (!b_connecton_closed) {
-                    printf("Retransmit %d %d\n", retransmit_iter, MAX_RETRANSMITS);
+                    //printf("Retransmit %d %d\n", retransmit_iter, MAX_RETRANSMITS);
                     ssize_t bytes_read = recvfrom(socket_fd, &acc_pck,
                                                     sizeof(acc_pck), 0,
                                                     (struct sockaddr*)&loc_server_addr,

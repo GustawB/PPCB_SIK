@@ -14,7 +14,7 @@
 #define UDP_PROT_ID 2
 #define UDPR_PROT_ID 3
 
-#define PCK_SIZE 3
+#define PCK_SIZE 4
 
 #define CONN_TYPE 1
 #define CONACC_TYPE 2

@@ -207,14 +207,11 @@ void assert_malloc(char* data, int main_fd, int secondary_fd, char* data_to_clea
 
 void print_data(char* data, char* buffer, size_t len) {
     // Create a valid string.
-    //printf("Print: %ld %ld\n", len, strlen(buffer));
     memcpy(buffer, data, len);
     char ch = '\0';
     memcpy(buffer + len, &ch, 1);
-    //printf("Just before printf: %ld %ld\n", len, strlen(buffer));
-    printf("%s", buffer); // DZIAŁA TYLKO GDY  char ch = '\n', a nie np '\0';
+    printf("%s", buffer);
     fflush(stdout);
-    //printf("%.*s", 1, data);
     free(buffer);
 }
 

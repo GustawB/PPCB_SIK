@@ -58,6 +58,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
             // so I have to update it here over and over again.
             addr_length = (socklen_t)sizeof(loc_server_addr);
             uint32_t curr_len = calc_pck_size(data_length);
+            //printf("Data chunk size: %d; Data left: %ld\n", curr_len, data_length);
 
             // Initialize a package.
             ssize_t pck_size = sizeof(DATA) - 8 + curr_len;
