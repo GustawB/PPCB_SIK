@@ -15,7 +15,7 @@
 #include "common.h"
 #include "err.h"
 
-void run_udp_client(const struct sockaddr_in* server_addr, const char* data, 
+void run_udp_client(const struct sockaddr_in* server_addr, char* data, 
                     uint64_t data_length, uint64_t session_id) {
     // Ignore SIGPIPE signals; stays for now.
     signal(SIGPIPE, SIG_IGN);
@@ -24,10 +24,10 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
     // Using server_addr directly caused problems, so I'm performing
     // a local copy of the sockaddr_in structure.
     struct sockaddr_in loc_server_addr = *server_addr;
-    int socket_fd = create_socket(UDP_PROT_ID);
+    int socket_fd = create_socket(UDP_PROT_ID, data);
 
     // Set timeouts for the server.
-    set_timeouts(-1, socket_fd);
+    set_timeouts(-1, socket_fd, data);
 
     // Send the CONN package.
     int flags = 0;
@@ -36,7 +36,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
                             .prot_id = UDP_PROT_ID, .data_length = htobe64(data_length)};
     ssize_t bytes_written = sendto(socket_fd, &connection_data, sizeof(connection_data),
                                     flags, (struct sockaddr*)&loc_server_addr, addr_length);
-    bool b_connection_closed = assert_write(bytes_written, sizeof(connection_data), socket_fd, -1, NULL);
+    bool b_connection_closed = assert_write(bytes_written, sizeof(connection_data), socket_fd, -1, NULL, data);
 
     if (!b_connection_closed) {
         // Get the CONACC package.
@@ -45,7 +45,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
                                         sizeof(ack_pck), flags,
                                         (struct sockaddr*)&loc_server_addr,
                                         &addr_length);
-        ssize_t result = get_connac_pck(socket_fd, &ack_pck, bytes_read, session_id);
+        ssize_t result = get_connac_pck(socket_fd, &ack_pck, bytes_read, session_id, data);
         if(result <= 0) {
             b_connection_closed = true;
         }
@@ -62,13 +62,13 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
             // Initialize a package.
             ssize_t pck_size = sizeof(DATA) - 8 + curr_len;
             char* data_pck = malloc(pck_size);
-            assert_malloc(data_pck, socket_fd, -1, NULL);
+            assert_malloc(data_pck, socket_fd, -1, NULL, data);
 
             init_data_pck(session_id, pck_number, 
                                     curr_len, data_pck, data_ptr);
             bytes_written = sendto(socket_fd, data_pck, pck_size, flags,
                                     (struct sockaddr*)&loc_server_addr, addr_length);
-            b_connection_closed = assert_write(bytes_written, pck_size, socket_fd, -1, data_pck);
+            b_connection_closed = assert_write(bytes_written, pck_size, socket_fd, -1, data_pck, data);
 
             if (!b_connection_closed) {
                 free(data_pck);
@@ -85,7 +85,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
                                             sizeof(rcvd_pck), flags,
                                             (struct sockaddr*)&loc_server_addr,
                                             &addr_length);
-            get_nonudpr_rcvd(socket_fd, &rcvd_pck, bytes_read, session_id);
+            get_nonudpr_rcvd(socket_fd, &rcvd_pck, bytes_read, session_id, data);
         }
     }
 

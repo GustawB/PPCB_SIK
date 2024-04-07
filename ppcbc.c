@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
     char* line = NULL;
     char* data = NULL;
     size_t n = 0;
-    ssize_t bytes_read;
+    ssize_t bytes_read = 0;
     uint64_t data_length = 0;
     // Read lines from standard input until EOF is encountered
     while ((bytes_read = getline(&line, &n, stdin)) != -1) {

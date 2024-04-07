@@ -14,7 +14,7 @@
 #define UDP_PROT_ID 2
 #define UDPR_PROT_ID 3
 
-#define PCK_SIZE 64000
+#define PCK_SIZE 3
 
 #define CONN_TYPE 1
 #define CONACC_TYPE 2
@@ -83,25 +83,25 @@ void init_sockaddr(struct sockaddr_in* addr, uint16_t port);
 
 struct sockaddr_in get_server_address(char const *host, uint16_t port, int8_t protocol_id);
 
-bool assert_write(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup);
-bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup);
+bool assert_write(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup, char* data_from_stream);
+bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup, char* data_from_stream);
 
-void assert_malloc(char* data, int main_fd, int secondary_fd, char* data_to_cleanup);
+void assert_malloc(char* data, int main_fd, int secondary_fd, char* data_to_cleanup, char* data_from_stream);
 
 void print_data(char* data, char* buffer, size_t len);
 
 uint32_t calc_pck_size(uint64_t data_length);
 
 ssize_t get_connac_pck(int socket_fd, const CONACC* ack_pck, 
-                        ssize_t bytes_read, uint64_t session_id);
+                        ssize_t bytes_read, uint64_t session_id, char* data_from_stream);
 
 ssize_t get_nonudpr_rcvd(int socket_fd, const RCVD* ack_pck, 
-                        ssize_t bytes_read, uint64_t session_id);
+                        ssize_t bytes_read, uint64_t session_id, char* data_from_stream);
 
-int create_socket(uint8_t protocol_id);
+int create_socket(uint8_t protocol_id, char* data_from_stream);
 
-int setup_socket(struct sockaddr_in* addr, uint8_t protocol_id, uint16_t port);
+int setup_socket(struct sockaddr_in* addr, uint8_t protocol_id, uint16_t port, char* data_from_stream);
 
-void set_timeouts(int main_fd, int secondary_fd);
+void set_timeouts(int main_fd, int secondary_fd, char* data_from_stream);
 
 #endif

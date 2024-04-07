@@ -136,7 +136,7 @@ void close_fd(int fd) {
     }
 }
 
-bool assert_write(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup) {
+bool assert_write(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup, char* data_from_stream) {
     if(result < 0) {
         cleanup(data_to_cleanup);
         if (errno == EPIPE) {
@@ -149,6 +149,7 @@ bool assert_write(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd,
         else {
             close_fd(main_fd);
             close_fd(secondary_fd);
+            cleanup(data_from_stream);
             syserr("Package send failed");
         }
     }
@@ -161,7 +162,7 @@ bool assert_write(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd,
     return false;
 }
 
-bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup) {
+bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup, char* data_from_stream) {
     if (result < 0) {
         cleanup(data_to_cleanup);
         if (errno == EAGAIN) {
@@ -174,6 +175,7 @@ bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, 
         else {
             close_fd(main_fd);
             close_fd(secondary_fd);
+            cleanup(data_from_stream);
             syserr("Failed to write data");
         }
     }
@@ -193,21 +195,26 @@ bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, 
     return false;
 }
 
-void assert_malloc(char* data, int main_fd, int secondary_fd, char* data_to_cleanup) {
+void assert_malloc(char* data, int main_fd, int secondary_fd, char* data_to_cleanup, char* data_from_stream) {
     if (data == NULL) {
         close_fd(main_fd);
         close_fd(secondary_fd);
         cleanup(data_to_cleanup);
+        cleanup(data_from_stream);
         fatal("Malloc failed");
     }
 }
 
 void print_data(char* data, char* buffer, size_t len) {
     // Create a valid string.
+    //printf("Print: %ld %ld\n", len, strlen(buffer));
     memcpy(buffer, data, len);
     char ch = '\0';
     memcpy(buffer + len, &ch, 1);
-    printf("Data: %s", buffer);
+    //printf("Just before printf: %ld %ld\n", len, strlen(buffer));
+    printf("%s", buffer); // DZIAŁA TYLKO GDY  char ch = '\n', a nie np '\0';
+    fflush(stdout);
+    //printf("%.*s", 1, data);
     free(buffer);
 }
 
@@ -221,8 +228,8 @@ uint32_t calc_pck_size(uint64_t data_length) {
     return curr_len;
 }
 
-ssize_t get_connac_pck(int socket_fd, const CONACC* ack_pck, ssize_t bytes_read, uint64_t session_id) {
-    bool result = assert_read(bytes_read, sizeof(*ack_pck), socket_fd, -1, NULL);
+ssize_t get_connac_pck(int socket_fd, const CONACC* ack_pck, ssize_t bytes_read, uint64_t session_id, char* data_from_stream) {
+    bool result = assert_read(bytes_read, sizeof(*ack_pck), socket_fd, -1, NULL, data_from_stream);
     if (result) {return -1;}
     else if (!result && ack_pck->pkt_type_id == CONRJT_TYPE && 
         ack_pck->session_id == session_id) {
@@ -240,9 +247,8 @@ ssize_t get_connac_pck(int socket_fd, const CONACC* ack_pck, ssize_t bytes_read,
     return 1;
 }
 
-ssize_t get_nonudpr_rcvd(int socket_fd, const RCVD* rcvd_pck, 
-                        ssize_t bytes_read, uint64_t session_id) {
-    bool result = assert_read(bytes_read, sizeof(*rcvd_pck), socket_fd, -1, NULL);
+ssize_t get_nonudpr_rcvd(int socket_fd, const RCVD* rcvd_pck, ssize_t bytes_read, uint64_t session_id, char* data_from_stream) {
+    bool result = assert_read(bytes_read, sizeof(*rcvd_pck), socket_fd, -1, NULL, data_from_stream);
     if (result) {return -1;}
     else if (!result && rcvd_pck->pkt_type_id == RJT_TYPE && 
         rcvd_pck->session_id == session_id) {
@@ -260,7 +266,7 @@ ssize_t get_nonudpr_rcvd(int socket_fd, const RCVD* rcvd_pck,
     return 1;
 }
 
-int create_socket(uint8_t protocol_id) {
+int create_socket(uint8_t protocol_id, char* data_from_stream) {
     // Create a socket with IPv4 protocol.
     int socket_fd = -1;
     if (protocol_id == TCP_PROT_ID) {
@@ -271,37 +277,41 @@ int create_socket(uint8_t protocol_id) {
     }
 
     if(socket_fd < 0){
+        cleanup(data_from_stream);
         syserr("Failed to create a socket.");
     }
 
     return socket_fd;
 }
 
-int setup_socket(struct sockaddr_in* addr, uint8_t protocol_id, uint16_t port) {
+int setup_socket(struct sockaddr_in* addr, uint8_t protocol_id, uint16_t port, char* data_from_stream) {
     // Create a socket with IPv4 protocol.
-    int socket_fd = create_socket(protocol_id);
+    int socket_fd = create_socket(protocol_id, data_from_stream);
 
     // Bind the socket to the local adress.
     init_sockaddr(addr, port);
     if (bind(socket_fd, (struct sockaddr*)addr, (socklen_t) sizeof(*addr)) < 0){
         close(socket_fd);
+        cleanup(data_from_stream);
         syserr("ERROR: Failed to bind a socket");
     }
 
     return socket_fd;
 }
 
-void set_timeouts(int main_fd, int secondary_fd) {
+void set_timeouts(int main_fd, int secondary_fd, char* data_from_stream) {
     struct timeval time_options = {.tv_sec = MAX_WAIT, .tv_usec = 0};
     if (setsockopt(secondary_fd, SOL_SOCKET, SO_RCVTIMEO, &time_options, sizeof(time_options)) < 0) {
         close_fd(main_fd);
         close_fd(secondary_fd);
+        cleanup(data_from_stream);
         syserr("Failed to set timeouts");
     }
     
     if (setsockopt(secondary_fd, SOL_SOCKET, SO_SNDTIMEO, &time_options, sizeof(time_options)) < 0) {
         close_fd(main_fd);
         close_fd(secondary_fd);
+        cleanup(data_from_stream);
         syserr("Failed to set timeouts");
     }
 

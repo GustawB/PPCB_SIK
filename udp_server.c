@@ -21,10 +21,10 @@ void run_udp_server(uint16_t port) {
 
     // Create a socket with IPv4 protocol.
     struct sockaddr_in server_addr;
-    int socket_fd = setup_socket(&server_addr, UDP_PROT_ID, port);
+    int socket_fd = setup_socket(&server_addr, UDP_PROT_ID, port, NULL);
 
     // Set timeouts for the client.
-    set_timeouts(-1, socket_fd);
+    set_timeouts(-1, socket_fd, NULL);
 
     // Communication loop
     for (;;) {
@@ -40,7 +40,7 @@ void run_udp_server(uint16_t port) {
                                         &addr_length);
             
             if ((bytes_read < 0 && errno != EAGAIN) || bytes_read >= 0) {
-                b_connection_closed = assert_read(bytes_read, sizeof(connection_data), socket_fd, -1, NULL);
+                b_connection_closed = assert_read(bytes_read, sizeof(connection_data), socket_fd, -1, NULL, NULL);
                 if (!b_connection_closed && connection_data.pkt_type_id == CONN_TYPE &&
                     (connection_data.prot_id == UDP_PROT_ID || connection_data.prot_id == UDPR_PROT_ID)) {
                     // We got a valid CONN.
@@ -58,7 +58,7 @@ void run_udp_server(uint16_t port) {
         CONACC resp = {.pkt_type_id = CONACC_TYPE, .session_id = connection_data.session_id};
         ssize_t bytes_written = sendto(socket_fd, &resp, sizeof(resp),
                                     0, (struct sockaddr*)&client_addr, addr_length);
-        b_connection_closed = assert_write(bytes_written, sizeof(resp), socket_fd, -1, NULL);
+        b_connection_closed = assert_write(bytes_written, sizeof(resp), socket_fd, -1, NULL, NULL);
 
         if(!b_connection_closed) {
             // If we managed to send the CONACC, read the data.
@@ -70,7 +70,7 @@ void run_udp_server(uint16_t port) {
 
                 ssize_t pck_size = sizeof(DATA) - 8 + curr_len;
                 char* recv_data = malloc(pck_size);
-                assert_malloc(recv_data, socket_fd, -1, NULL);
+                assert_malloc(recv_data, socket_fd, -1, NULL, NULL);
                 
                 ssize_t bytes_read = recvfrom(socket_fd, recv_data, pck_size, 0,
                                     (struct sockaddr*)&client_addr, &addr_length);
@@ -79,7 +79,7 @@ void run_udp_server(uint16_t port) {
                 while(!b_connection_closed) {
                     printf("Retransmit %d %d\n", retransmits_counter, MAX_RETRANSMITS);
                     if ((bytes_read < 0 && errno != EAGAIN) || bytes_read == 0) { // Will produce error message
-                        b_connection_closed = assert_read(bytes_read, pck_size, socket_fd, -1, recv_data);
+                        b_connection_closed = assert_read(bytes_read, pck_size, socket_fd, -1, recv_data, NULL);
                     }
                     else if (bytes_read > 0) {
                         // And I can process it further
@@ -102,7 +102,7 @@ void run_udp_server(uint16_t port) {
                             CONRJT conrjt_pck = {.pkt_type_id = CONRJT_TYPE, .session_id = dt->session_id};
                             bytes_written = sendto(socket_fd, &conrjt_pck, sizeof(conrjt_pck),
                                                         0, (struct sockaddr*)&client_addr, addr_length);
-                            b_connection_closed = assert_write(bytes_written, sizeof(conrjt_pck), socket_fd, -1, recv_data);
+                            b_connection_closed = assert_write(bytes_written, sizeof(conrjt_pck), socket_fd, -1, recv_data, NULL);
                         }
                         else if (connection_data.prot_id == UDPR_PROT_ID && bytes_read == sizeof(CONN) && 
                                 dt->pkt_type_id == CONN_TYPE && dt->session_id == connection_data.session_id) {
@@ -115,7 +115,7 @@ void run_udp_server(uint16_t port) {
                                 RJT rjt_pck = {.pkt_type_id = RJT_TYPE, .session_id = dt->session_id, .pkt_nr = dt->pkt_nr};
                                 bytes_written = sendto(socket_fd, &rjt_pck, sizeof(rjt_pck),
                                                                     0, (struct sockaddr*)&client_addr, addr_length);
-                                b_connection_closed = assert_write(bytes_written, sizeof(rjt_pck), socket_fd, -1, recv_data);
+                                b_connection_closed = assert_write(bytes_written, sizeof(rjt_pck), socket_fd, -1, recv_data, NULL);
                                 if (dt->session_id == connection_data.session_id) {
                                     // It was our client, we have to close the connection.
                                     b_connection_closed = true;
@@ -131,7 +131,7 @@ void run_udp_server(uint16_t port) {
                     else {// errno == EAGAIN
                         if (connection_data.prot_id != UDPR_PROT_ID) {
                             // Will produce error message
-                            b_connection_closed = assert_read(bytes_read, pck_size, socket_fd, -1, recv_data);
+                            b_connection_closed = assert_read(bytes_read, pck_size, socket_fd, -1, recv_data, NULL);
                         }
                         else if (retransmits_counter == MAX_RETRANSMITS) {
                             // Fuck this shit I'm out.
@@ -142,7 +142,7 @@ void run_udp_server(uint16_t port) {
                             // First package, retransmit CONACC.
                             ssize_t bytes_written = sendto(socket_fd, &resp, sizeof(resp),
                                                         0, (struct sockaddr*)&client_addr, addr_length);
-                            b_connection_closed = assert_write(bytes_written, sizeof(resp), socket_fd, -1, recv_data);
+                            b_connection_closed = assert_write(bytes_written, sizeof(resp), socket_fd, -1, recv_data, NULL);
                             ++retransmits_counter;
                         }
                         else {
@@ -150,7 +150,7 @@ void run_udp_server(uint16_t port) {
                             ACC acc_retr = {.pkt_nr = pck_number - 1, .pkt_type_id = ACC_TYPE, .session_id = connection_data.session_id};
                             bytes_written = sendto(socket_fd, &acc_retr, sizeof(acc_retr),
                                                         0, (struct sockaddr*)&client_addr, addr_length);
-                            b_connection_closed = assert_write(bytes_written, sizeof(acc_retr), socket_fd, -1, recv_data);
+                            b_connection_closed = assert_write(bytes_written, sizeof(acc_retr), socket_fd, -1, recv_data, NULL);
                             ++retransmits_counter;
                         }
                     }
@@ -168,7 +168,7 @@ void run_udp_server(uint16_t port) {
                     ++pck_number;
 
                     char* data_to_print = malloc(curr_len + 1);
-                    assert_malloc(data_to_print, socket_fd, -1, NULL);
+                    assert_malloc(data_to_print, socket_fd, -1, NULL, NULL);
                     print_data(recv_data + 21, data_to_print, curr_len);
                     free(recv_data);
 
@@ -177,7 +177,7 @@ void run_udp_server(uint16_t port) {
                         ACC acc_resp = {.pkt_type_id = ACC_TYPE, .pkt_nr = pck_number - 1, .session_id = connection_data.session_id};
                         bytes_written = sendto(socket_fd, &acc_resp, sizeof(acc_resp),
                                                     0, (struct sockaddr*)&client_addr, addr_length);
-                        b_connection_closed = assert_write(bytes_written, sizeof(acc_resp), socket_fd, -1, NULL);
+                        b_connection_closed = assert_write(bytes_written, sizeof(acc_resp), socket_fd, -1, NULL, NULL);
                     }
                 }
             }
@@ -187,7 +187,7 @@ void run_udp_server(uint16_t port) {
                 RCVD rcvd_resp = {.pkt_type_id = RCVD_TYPE, .session_id = connection_data.session_id};
                 bytes_written = sendto(socket_fd, &rcvd_resp, sizeof(rcvd_resp),
                                                     0, (struct sockaddr*)&client_addr, addr_length);
-                b_connection_closed = assert_write(bytes_written, sizeof(rcvd_resp), socket_fd, -1, NULL);
+                b_connection_closed = assert_write(bytes_written, sizeof(rcvd_resp), socket_fd, -1, NULL, NULL);
             }
         }
     }

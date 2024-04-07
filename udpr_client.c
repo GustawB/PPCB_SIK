@@ -16,16 +16,16 @@
 #include "common.h"
 #include "err.h"
 
-void run_udpr_client(const struct sockaddr_in* server_addr, const char* data, 
+void run_udpr_client(const struct sockaddr_in* server_addr, char* data, 
                     uint64_t data_length, uint64_t session_id) {
     // Create a socket.
     // Using server_addr directly caused problems, so I'm performing
     // a local copy of the sockaddr_in structure.
     struct sockaddr_in loc_server_addr = *server_addr;
-    int socket_fd = create_socket(UDPR_PROT_ID);
+    int socket_fd = create_socket(UDPR_PROT_ID, data);
 
     // Set timeouts for the server.
-    set_timeouts(-1, socket_fd);
+    set_timeouts(-1, socket_fd, data);
 
     // CONN-CONACK loop
     int retransmit_iter = 0;
@@ -36,7 +36,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, const char* data,
                                 .prot_id = UDPR_PROT_ID, .data_length = htobe64(data_length)};
         ssize_t bytes_written = sendto(socket_fd, &connection_data, sizeof(connection_data),
                                         0, (struct sockaddr*)&loc_server_addr, addr_length);
-        b_connecton_closed = assert_write(bytes_written, sizeof(connection_data), socket_fd, -1, NULL);
+        b_connecton_closed = assert_write(bytes_written, sizeof(connection_data), socket_fd, -1, NULL, data);
         if (!b_connecton_closed) {
             // Try to get a CONACC package.
             CONACC conacc_pck;
@@ -45,7 +45,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, const char* data,
                                     (struct sockaddr*)&loc_server_addr,
                                     &addr_length);
             if (bytes_read >= 0 || (bytes_read < 0 && errno != EAGAIN)) {
-                ssize_t result = get_connac_pck(socket_fd, &conacc_pck, bytes_read, session_id);
+                ssize_t result = get_connac_pck(socket_fd, &conacc_pck, bytes_read, session_id, data);
                 if (result <= 0) {
                     b_connecton_closed = true;
                 }
@@ -78,7 +78,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, const char* data,
             // Initialize a package.
             ssize_t pck_size = sizeof(DATA) - 8 + curr_len;
             char* data_pck = malloc(pck_size);
-            assert_malloc(data_pck, socket_fd, -1, NULL);
+            assert_malloc(data_pck, socket_fd, -1, NULL, data);
             
             init_data_pck(session_id, pck_number, 
                                     curr_len, data_pck, data_ptr);
@@ -86,7 +86,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, const char* data,
             // Send data to the server.
             ssize_t bytes_written = sendto(socket_fd, data_pck, pck_size, 0,
                                     (struct sockaddr*)&loc_server_addr, addr_length);
-            b_connecton_closed = assert_write(bytes_written, pck_size, socket_fd, -1, data_pck);
+            b_connecton_closed = assert_write(bytes_written, pck_size, socket_fd, -1, data_pck, data);
             
             if (!b_connecton_closed) {
                 // Managed to send the data, try to get an ACC.
@@ -100,7 +100,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, const char* data,
                                                     (struct sockaddr*)&loc_server_addr,
                                                     &addr_length);
                     if ((bytes_read < 0 && errno != EAGAIN) || bytes_read == 0) { // Will produce error message.
-                        b_connecton_closed = assert_read(bytes_read, sizeof(acc_pck), socket_fd, -1, data_pck);
+                        b_connecton_closed = assert_read(bytes_read, sizeof(acc_pck), socket_fd, -1, data_pck, data);
                     }
                     else if (bytes_read > 0) {
                         if (bytes_read == sizeof(ACC) && acc_pck.pkt_type_id == ACC_TYPE &&
@@ -143,7 +143,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, const char* data,
                         else {
                             bytes_written = sendto(socket_fd, data_pck, pck_size, 0,
                                             (struct sockaddr*)&loc_server_addr, addr_length);
-                            b_connecton_closed = assert_write(bytes_written, pck_size, socket_fd, -1, NULL);
+                            b_connecton_closed = assert_write(bytes_written, pck_size, socket_fd, -1, NULL, data);
                             ++retransmit_iter;
                         }
                     }
@@ -170,7 +170,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, const char* data,
                                             (struct sockaddr*)&loc_server_addr,
                                             &addr_length);
                 if (bytes_read <= 0) { // Will produce error message.
-                    b_connecton_closed = assert_read(bytes_read, sizeof(rcvd_pck), socket_fd, -1, NULL);
+                    b_connecton_closed = assert_read(bytes_read, sizeof(rcvd_pck), socket_fd, -1, NULL, data);
                 }
                 else if (rcvd_pck.pkt_type_id == RCVD_TYPE && rcvd_pck.session_id == session_id) {
                     // We received a confirmation, exit the loop.

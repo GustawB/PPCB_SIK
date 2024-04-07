@@ -21,7 +21,7 @@ void run_tcp_server(uint16_t port) {
 
     // Create a socket with IPv4 protocol.
     struct sockaddr_in server_addr;
-    int socket_fd = setup_socket(&server_addr, TCP_PROT_ID, port);
+    int socket_fd = setup_socket(&server_addr, TCP_PROT_ID, port, NULL);
 
     // Set the socket to listen.
     if(listen(socket_fd, QUEUE_LENGTH) < 0) {
@@ -43,12 +43,12 @@ void run_tcp_server(uint16_t port) {
         }
 
         // Set timeouts for the client.
-        set_timeouts(socket_fd, client_fd);
+        set_timeouts(socket_fd, client_fd, NULL);
 
         // Get a CONN package.
         CONN connect_data;
         ssize_t bytes_read = read_n_bytes(client_fd, &connect_data, sizeof(connect_data));
-        bool b_connection_closed = assert_read(bytes_read, sizeof(connect_data), socket_fd, client_fd, NULL);
+        bool b_connection_closed = assert_read(bytes_read, sizeof(connect_data), socket_fd, client_fd, NULL, NULL);
         if (!b_connection_closed && (connect_data.pkt_type_id != CONN_TYPE || 
             connect_data.prot_id != TCP_PROT_ID)) {
             // We got something wrong. Close the connection.
@@ -57,26 +57,36 @@ void run_tcp_server(uint16_t port) {
             close(client_fd);
         }
         if(!b_connection_closed) {
+            //printf("Got CONN\n");
             // Managed to get the CONN package, its time to send CONACC back to the client.
             CONACC con_ack_data = {.pkt_type_id = CONACC_TYPE, .session_id = connect_data.session_id};
             ssize_t bytes_written = write_n_bytes(client_fd, &con_ack_data, sizeof(con_ack_data));
-            b_connection_closed = assert_write(bytes_written, sizeof(con_ack_data), socket_fd, client_fd, NULL);
+            b_connection_closed = assert_write(bytes_written, sizeof(con_ack_data), socket_fd, client_fd, NULL, NULL);
             if (!b_connection_closed) {
                 // Read data from the client.
                 uint64_t byte_count = be64toh(connect_data.data_length);
                 uint64_t pck_number = 0;
 
+                //printf("Send CONACC, byte count: %ld\n", byte_count);
                 while (byte_count > 0 && !b_connection_closed) {
+                    //printf("Entered read loop\n");
                     uint32_t curr_len = calc_pck_size(byte_count);
 
                     size_t pck_size = sizeof(DATA) - 8 + curr_len;
                     char* recv_data = malloc(pck_size);
-                    assert_malloc(recv_data, socket_fd, client_fd, NULL);
+                    assert_malloc(recv_data, socket_fd, client_fd, NULL, NULL);
+
+                    //printf("Current length: %d\n", curr_len);
 
                     bytes_read = read_n_bytes(client_fd, recv_data, pck_size);
-                    b_connection_closed = assert_read(bytes_read, pck_size, socket_fd, client_fd, recv_data);
+                    //printf("Data read: %ld\n", bytes_read);
+                    b_connection_closed = assert_read(bytes_read, pck_size, socket_fd, client_fd, recv_data, NULL);
+                    //printf("Data asserted\n");
                     if (!b_connection_closed) {
+                        //printf("Entered check\n");
                         DATA* dt = (DATA*)recv_data;
+                        //printf("Cast succeded\n");
+                        //printf("%d %ld ", dt->data_size, byte_count);
                         if (dt->pkt_type_id != DATA_TYPE || dt->session_id != connect_data.session_id || 
                             dt->pkt_nr != pck_number || dt->data_size != curr_len) {
                             // Invalid package, send RJT to the client and move on.
@@ -84,7 +94,7 @@ void run_tcp_server(uint16_t port) {
                                  .pkt_type_id = RJT_TYPE, .pkt_nr = pck_number};
                             bytes_written = write_n_bytes(client_fd, &error_pck, sizeof(error_pck));
                             b_connection_closed = assert_write(bytes_written, sizeof(error_pck), 
-                                                                socket_fd, client_fd, recv_data);
+                                                                socket_fd, client_fd, recv_data, NULL);
                             if (!b_connection_closed) {
                                 free(recv_data);
                             }
@@ -95,7 +105,7 @@ void run_tcp_server(uint16_t port) {
                             ++pck_number;
                             byte_count -= dt->data_size;
                             char* data_to_print = malloc(curr_len + 1);
-                            assert_malloc(recv_data, socket_fd, client_fd, recv_data);
+                            assert_malloc(recv_data, socket_fd, client_fd, recv_data, NULL);
                             print_data(recv_data + 21, data_to_print, curr_len);
                             free(recv_data);
                         }
@@ -105,9 +115,10 @@ void run_tcp_server(uint16_t port) {
                 if (!b_connection_closed) {
                     // Managed to get all the data. Send RCVD package 
                     // to the client and close the connection.
+                    //printf("Bazinga\n");
                     RCVD recv_data_ack = {.pkt_type_id = RCVD_TYPE, .session_id = connect_data.session_id};
                     bytes_written = write_n_bytes(client_fd, &recv_data_ack, sizeof(recv_data_ack));
-                    b_connection_closed = assert_write(bytes_written, sizeof(recv_data_ack), socket_fd, client_fd, NULL);
+                    b_connection_closed = assert_write(bytes_written, sizeof(recv_data_ack), socket_fd, client_fd, NULL, NULL);
                 }
 
                 if (!b_connection_closed) {
