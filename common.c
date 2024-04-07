@@ -143,6 +143,7 @@ bool assert_write(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd,
             // Connection closed.
             close_fd(secondary_fd);
             error("Connection closed.");
+            errno = 0;
             return true;
         }
         else {
@@ -167,6 +168,7 @@ bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, 
             // Connection timeout.
             close_fd(secondary_fd);
             error("Connection timeout");
+            errno = 0;
             return true;
         }
         else {

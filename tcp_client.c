@@ -27,6 +27,7 @@ void run_tcp_client(struct sockaddr_in* server_addr, const char* data,
     // Connect to the server.
     if (connect(socket_fd, (struct sockaddr*)server_addr,
                 (socklen_t) sizeof(*server_addr)) < 0) {
+        close(socket_fd);
         syserr("Client failed to connect to the server");
     }
 

@@ -71,7 +71,6 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
             b_connection_closed = assert_write(bytes_written, pck_size, socket_fd, -1, data_pck);
 
             if (!b_connection_closed) {
-                printf("Pck number: %ld\n", pck_number);
                 free(data_pck);
                 ++pck_number;
                 data_length -= curr_len;

@@ -63,6 +63,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, const char* data,
         error("Timeout");
         b_connecton_closed = true;
     }
+    errno = 0;
 
     if (!b_connecton_closed) {
         // Connection established. Start data sending loop.
@@ -148,6 +149,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, const char* data,
                     }
                 }
             }
+            errno = 0;
             
             if (!b_connecton_closed)  {
                 // Update invariants after the data-acc loop.
@@ -179,6 +181,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, const char* data,
                     // We received something that we can't skip.
                     b_connecton_closed = true;
                     error("Invalid package in RCVD");
+                    errno = 0;
                 }
             }
         }

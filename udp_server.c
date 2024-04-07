@@ -51,10 +51,7 @@ void run_udp_server(uint16_t port) {
                     b_connection_closed = false;
                 }
             }
-            else {
-                // Timeout, reset the error flag.
-                errno = 0;
-            }
+            errno = 0;
         }        
 
         // Send CONACC back to the client.
