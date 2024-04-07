@@ -12,6 +12,7 @@
 
 #include "err.h"
 #include "common.h"
+#include "protconst.h"
 
 void init_data_pck(uint64_t session_id, uint64_t pck_number, 
                                 uint32_t data_size, char* data_pck, const char* data) {
@@ -206,4 +207,100 @@ void print_data(char* data, char* buffer, size_t len) {
     memcpy(buffer + len, &ch, 1);
     printf("Data: %s", buffer);
     free(buffer);
+}
+
+uint32_t calc_pck_size(uint64_t data_length) {
+    // Calculate a size of the data chunk that will be
+    // send received.
+    uint32_t curr_len = PCK_SIZE;
+    if (curr_len > data_length) {
+        curr_len = data_length;
+    }
+    return curr_len;
+}
+
+ssize_t get_connac_pck(int socket_fd, const CONACC* ack_pck, ssize_t bytes_read, uint64_t session_id) {
+    bool result = assert_read(bytes_read, sizeof(*ack_pck), socket_fd, -1, NULL);
+    if (result) {return -1;}
+    else if (!result && ack_pck->pkt_type_id == CONRJT_TYPE && 
+        ack_pck->session_id == session_id) {
+        // We got rejected by the server.
+        error("Connection rejected");
+        return 0;
+    }
+    else if (!result && (ack_pck->pkt_type_id != CONACC_TYPE ||
+            ack_pck->session_id != session_id)) {
+        // We got something invalid, end with error.
+        error("Invalid package");
+        return -1;
+    }
+
+    return 1;
+}
+
+ssize_t get_nonudpr_rcvd(int socket_fd, const RCVD* rcvd_pck, 
+                        ssize_t bytes_read, uint64_t session_id) {
+    bool result = assert_read(bytes_read, sizeof(*rcvd_pck), socket_fd, -1, NULL);
+    if (result) {return -1;}
+    else if (!result && rcvd_pck->pkt_type_id == RJT_TYPE && 
+        rcvd_pck->session_id == session_id) {
+        // We got rejected.
+        error("Data Rejected");
+        return 0;
+    }
+    else if (!result && (rcvd_pck->pkt_type_id != RCVD_TYPE ||
+        rcvd_pck->session_id != session_id)) {
+        // We received invalid package.
+        error("Invalid package");
+        return -1;
+    }
+
+    return 1;
+}
+
+int create_socket(uint8_t protocol_id) {
+    // Create a socket with IPv4 protocol.
+    int socket_fd = -1;
+    if (protocol_id == TCP_PROT_ID) {
+        socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    }
+    else if (protocol_id == UDP_PROT_ID || protocol_id == UDPR_PROT_ID) {
+        socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    }
+
+    if(socket_fd < 0){
+        syserr("Failed to create a socket.");
+    }
+
+    return socket_fd;
+}
+
+int setup_socket(struct sockaddr_in* addr, uint8_t protocol_id, uint16_t port) {
+    // Create a socket with IPv4 protocol.
+    int socket_fd = create_socket(protocol_id);
+
+    // Bind the socket to the local adress.
+    init_sockaddr(addr, port);
+    if (bind(socket_fd, (struct sockaddr*)addr, (socklen_t) sizeof(*addr)) < 0){
+        close(socket_fd);
+        syserr("ERROR: Failed to bind a socket");
+    }
+
+    return socket_fd;
+}
+
+void set_timeouts(int main_fd, int secondary_fd) {
+    struct timeval time_options = {.tv_sec = MAX_WAIT, .tv_usec = 0};
+    if (setsockopt(secondary_fd, SOL_SOCKET, SO_RCVTIMEO, &time_options, sizeof(time_options)) < 0) {
+        close_fd(main_fd);
+        close_fd(secondary_fd);
+        syserr("Failed to set timeouts");
+    }
+    
+    if (setsockopt(secondary_fd, SOL_SOCKET, SO_SNDTIMEO, &time_options, sizeof(time_options)) < 0) {
+        close_fd(main_fd);
+        close_fd(secondary_fd);
+        syserr("Failed to set timeouts");
+    }
+
 }

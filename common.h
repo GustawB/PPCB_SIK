@@ -24,25 +24,6 @@
 #define RJT_TYPE 6
 #define RCVD_TYPE 7
 
-uint16_t read_port(const char* string);
-
-ssize_t read_n_bytes(int fd, void* dsptr, size_t n);
-ssize_t write_n_bytes(int fd, void* dsptr, size_t n);
-
-void init_data_pck(uint64_t session_id, uint64_t pck_number, 
-                                uint32_t data_size, char* data_pck, const char* data);
-
-void init_sockaddr(struct sockaddr_in* addr, uint16_t port);
-
-struct sockaddr_in get_server_address(char const *host, uint16_t port, int8_t protocol_id);
-
-bool assert_write(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup);
-bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup);
-
-void assert_malloc(char* data, int main_fd, int secondary_fd, char* data_to_cleanup);
-
-void print_data(char* data, char* buffer, size_t len);
-
 typedef struct __attribute__((__packed__)) {
     uint8_t pkt_type_id;
     uint64_t session_id;
@@ -89,5 +70,38 @@ typedef struct __attribute__((__packed__)) {
     uint8_t pkt_type_id;
     uint64_t session_id;
 } RCVD;
+
+uint16_t read_port(const char* string);
+
+ssize_t read_n_bytes(int fd, void* dsptr, size_t n);
+ssize_t write_n_bytes(int fd, void* dsptr, size_t n);
+
+void init_data_pck(uint64_t session_id, uint64_t pck_number, 
+                                uint32_t data_size, char* data_pck, const char* data);
+
+void init_sockaddr(struct sockaddr_in* addr, uint16_t port);
+
+struct sockaddr_in get_server_address(char const *host, uint16_t port, int8_t protocol_id);
+
+bool assert_write(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup);
+bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup);
+
+void assert_malloc(char* data, int main_fd, int secondary_fd, char* data_to_cleanup);
+
+void print_data(char* data, char* buffer, size_t len);
+
+uint32_t calc_pck_size(uint64_t data_length);
+
+ssize_t get_connac_pck(int socket_fd, const CONACC* ack_pck, 
+                        ssize_t bytes_read, uint64_t session_id);
+
+ssize_t get_nonudpr_rcvd(int socket_fd, const RCVD* ack_pck, 
+                        ssize_t bytes_read, uint64_t session_id);
+
+int create_socket(uint8_t protocol_id);
+
+int setup_socket(struct sockaddr_in* addr, uint8_t protocol_id, uint16_t port);
+
+void set_timeouts(int main_fd, int secondary_fd);
 
 #endif

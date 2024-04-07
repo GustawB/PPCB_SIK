@@ -24,15 +24,10 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
     // Using server_addr directly caused problems, so I'm performing
     // a local copy of the sockaddr_in structure.
     struct sockaddr_in loc_server_addr = *server_addr;
-    int socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if(socket_fd < 0){
-        syserr("Failed to create a socket.");
-    }
+    int socket_fd = create_socket(UDP_PROT_ID);
 
     // Set timeouts for the server.
-    struct timeval time_options = {.tv_sec = MAX_WAIT, .tv_usec = 0};
-    setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &time_options, sizeof(time_options));
-    setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &time_options, sizeof(time_options));
+    set_timeouts(-1, socket_fd);
 
     // Send the CONN package.
     int flags = 0;
@@ -50,18 +45,9 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
                                         sizeof(ack_pck), flags,
                                         (struct sockaddr*)&loc_server_addr,
                                         &addr_length);
-        b_connection_closed = assert_read(bytes_read, sizeof(ack_pck), socket_fd, -1, NULL);
-        if (!b_connection_closed && ack_pck.pkt_type_id == CONRJT_TYPE && 
-            ack_pck.session_id == session_id) {
-            // We got rejected by the server.
+        ssize_t result = get_connac_pck(socket_fd, &ack_pck, bytes_read, session_id);
+        if(result <= 0) {
             b_connection_closed = true;
-            error("Connection rejected");
-        }
-        else if (!b_connection_closed && (ack_pck.pkt_type_id != CONACC_TYPE ||
-                ack_pck.session_id != session_id)) {
-            // We got something invalid, end with error.
-            b_connection_closed = true;
-            error("Wanted CONACC, got something else");
         }
 
         // Send data to the server.
@@ -71,10 +57,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
             // recvfrom can change the value of th eaddr_length,
             // so I have to update it here over and over again.
             addr_length = (socklen_t)sizeof(loc_server_addr);
-            uint32_t curr_len = PCK_SIZE;
-            if (curr_len > data_length) {
-                curr_len = data_length;
-            }
+            uint32_t curr_len = calc_pck_size(data_length);
 
             // Initialize a package.
             ssize_t pck_size = sizeof(DATA) - 8 + curr_len;
@@ -103,18 +86,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, const char* data,
                                             sizeof(rcvd_pck), flags,
                                             (struct sockaddr*)&loc_server_addr,
                                             &addr_length);
-            b_connection_closed = assert_read(bytes_read, sizeof(rcvd_pck), socket_fd, -1, NULL);
-            if(!b_connection_closed && rcvd_pck.pkt_type_id  == RJT_TYPE &&
-                rcvd_pck.session_id == session_id) {
-                // Our data got rejected.
-                error("Data rejected");
-            }
-            else if (!b_connection_closed && (rcvd_pck.pkt_type_id != RCVD_TYPE ||
-                    rcvd_pck.session_id != session_id)) {
-                // We got invalid package.
-                error("Invalid package");
-            }
-
+            get_nonudpr_rcvd(socket_fd, &rcvd_pck, bytes_read, session_id);
         }
     }
 

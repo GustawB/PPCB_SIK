@@ -20,19 +20,8 @@ void run_tcp_server(uint16_t port) {
     signal(SIGPIPE, SIG_IGN);
 
     // Create a socket with IPv4 protocol.
-    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if(socket_fd < 0){
-        syserr("ERROR: Failed to create a socket.");
-    }
-
-    // Bind the socket to the local adress.
     struct sockaddr_in server_addr;
-    init_sockaddr(&server_addr, port);
-
-    if (bind(socket_fd, (struct sockaddr*)&server_addr, (socklen_t) sizeof(server_addr)) < 0){
-        close(socket_fd);
-        syserr("ERROR: Failed to bind a socket");
-    }
+    int socket_fd = setup_socket(&server_addr, TCP_PROT_ID, port);
 
     // Set the socket to listen.
     if(listen(socket_fd, QUEUE_LENGTH) < 0) {
@@ -54,9 +43,7 @@ void run_tcp_server(uint16_t port) {
         }
 
         // Set timeouts for the client.
-        struct timeval time_options = {.tv_sec = MAX_WAIT, .tv_usec = 0};
-        setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &time_options, sizeof(time_options));
-        setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &time_options, sizeof(time_options));
+        set_timeouts(socket_fd, client_fd);
 
         // Get a CONN package.
         CONN connect_data;
@@ -80,10 +67,7 @@ void run_tcp_server(uint16_t port) {
                 uint64_t pck_number = 0;
 
                 while (byte_count > 0 && !b_connection_closed) {
-                    uint32_t curr_len = PCK_SIZE;
-                    if (curr_len > byte_count) {
-                        curr_len = byte_count;
-                    }
+                    uint32_t curr_len = calc_pck_size(byte_count);
 
                     size_t pck_size = sizeof(DATA) - 8 + curr_len;
                     char* recv_data = malloc(pck_size);
