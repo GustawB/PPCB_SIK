@@ -205,14 +205,13 @@ void assert_malloc(char* data, int main_fd, int secondary_fd, char* data_to_clea
     }
 }
 
-void print_data(char* data, char* buffer, size_t len) {
+void print_data(char* data, size_t len) {
     // Create a valid string.
-    memcpy(buffer, data, len);
     char ch = '\0';
-    memcpy(buffer + len, &ch, 1);
-    printf("%s", buffer);
+    memcpy(data + len, &ch, 1);
+    //printf("%s", data);
+    fwrite(data, sizeof(char), len, stdout);
     fflush(stdout);
-    free(buffer);
 }
 
 uint32_t calc_pck_size(uint64_t data_length) {

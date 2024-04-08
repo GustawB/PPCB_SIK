@@ -70,17 +70,17 @@ void run_tcp_server(uint16_t port) {
                 //printf("Send CONACC, byte count: %ld\n", byte_count);
                 while (byte_count > 0 && !b_connection_closed) {
                     //printf("Entered read loop\n");
-                    uint32_t curr_len = calc_pck_size(byte_count);
+                    //uint32_t curr_len = calc_pck_size(byte_count);
 
-                    size_t pck_size = sizeof(DATA) - 8 + curr_len;
+                    size_t pck_size = sizeof(DATA);
                     char* recv_data = malloc(pck_size);
                     assert_malloc(recv_data, socket_fd, client_fd, NULL, NULL);
 
                     //printf("Current length: %d\n", curr_len);
 
-                    bytes_read = read_n_bytes(client_fd, recv_data, pck_size);
+                    bytes_read = read_n_bytes(client_fd, recv_data, sizeof(DATA) - 8);
                     //printf("Data read: %ld\n", bytes_read);
-                    b_connection_closed = assert_read(bytes_read, pck_size, socket_fd, client_fd, recv_data, NULL);
+                    b_connection_closed = assert_read(bytes_read, sizeof(DATA) - 8, socket_fd, client_fd, recv_data, NULL);
                     //printf("Data asserted\n");
                     if (!b_connection_closed) {
                         //printf("Entered check\n");
@@ -88,7 +88,7 @@ void run_tcp_server(uint16_t port) {
                         //printf("Cast succeded\n");
                         //printf("%d %ld ", dt->data_size, byte_count);
                         if (dt->pkt_type_id != DATA_TYPE || dt->session_id != connect_data.session_id || 
-                            dt->pkt_nr != pck_number || dt->data_size != curr_len) {
+                            dt->pkt_nr != pck_number) {
                             // Invalid package, send RJT to the client and move on.
                             RJT error_pck = {.session_id = connect_data.session_id,
                                  .pkt_type_id = RJT_TYPE, .pkt_nr = pck_number};
@@ -102,12 +102,20 @@ void run_tcp_server(uint16_t port) {
                             close(client_fd);
                         }
                         else  {
-                            ++pck_number;
-                            byte_count -= dt->data_size;
-                            char* data_to_print = malloc(curr_len + 1);
+                            // Valid package, read the data part.
+                            char* data_to_print = malloc(dt->data_size + 1);
                             assert_malloc(recv_data, socket_fd, client_fd, recv_data, NULL);
-                            print_data(recv_data + 21, data_to_print, curr_len);
-                            free(recv_data);
+                            bytes_read = read_n_bytes(client_fd, data_to_print, dt->data_size);
+                            b_connection_closed = assert_read(bytes_read, dt->data_size, socket_fd, client_fd, recv_data, data_to_print);
+                            if (!b_connection_closed) {
+                                // Managed to get the data. Print it.
+                                fwrite(data_to_print, sizeof(char), dt->data_size, stdout);
+                                fflush(stdout);
+                                ++pck_number;
+                                byte_count -= dt->data_size;
+                                free(recv_data);
+                            }
+                            free(data_to_print);
                         }
                     }
                 }

@@ -88,7 +88,7 @@ bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, 
 
 void assert_malloc(char* data, int main_fd, int secondary_fd, char* data_to_cleanup, char* data_from_stream);
 
-void print_data(char* data, char* buffer, size_t len);
+void print_data(char* data, size_t len);
 
 uint32_t calc_pck_size(uint64_t data_length);
 

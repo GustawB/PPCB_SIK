@@ -78,7 +78,7 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
                 ++pck_number;
                 data_ptr += curr_len;
                 data_length -= curr_len;
-              ///  free(data_pck);
+                free(data_pck);
             }
         }
 
