@@ -31,6 +31,9 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
         syserr("Client failed to connect to the server");
     }
 
+    long long int send_data = 0;
+    clock_t tic = clock();
+
     // Set timeouts for the server.
     set_timeouts(-1, socket_fd, data);
 
@@ -42,6 +45,7 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
     
     CONACC con_ack_data;
     if (!b_connection_close){
+        send_data += bytes_written;
         // Read a CONACC package but only if we managed to send the CONN package.
         ssize_t bytes_read = read_n_bytes(socket_fd, &con_ack_data, 
                                 sizeof(con_ack_data));
@@ -55,7 +59,6 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
     // to the data transfer.
     if (!b_connection_close && con_ack_data.pkt_type_id == CONACC_TYPE && 
         con_ack_data.session_id == session_id) {
-
         uint64_t pck_number = 0;
         const char* data_ptr = data;
         while(data_length > 0 && !b_connection_close) {
@@ -74,6 +77,7 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
             b_connection_close = assert_write(bytes_written, pck_size, socket_fd, -1, data_pck, data);
             
             if (!b_connection_close) {
+                send_data += bytes_written;
                 // Update invariants.
                 ++pck_number;
                 data_ptr += curr_len;
@@ -90,6 +94,12 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
             get_nonudpr_rcvd(socket_fd, &recv_data_ack, bytes_read, session_id, data);
             //printf("%d %ld\n", recv_data_ack.pkt_type_id, recv_data_ack.session_id);
         }
+    }
+
+    if (DEBUG_STATE == 1) {
+        clock_t toc = clock();
+        printf("Elapsed: %f seconds\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+        printf("Bytes send in total: %lld\n", send_data);
     }
     
     close(socket_fd);

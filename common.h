@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <sys/types.h>
+#include <time.h>
 
 #define TCP_PROT "tcp"
 #define UDP_PROT "udp"
@@ -14,7 +15,13 @@
 #define UDP_PROT_ID 2
 #define UDPR_PROT_ID 3
 
-#define PCK_SIZE 4
+#ifndef PCK_SIZE
+#define PCK_SIZE 64000
+#endif
+
+#ifndef DEBUG_STATE
+#define DEBUG_STATE 0
+#endif 
 
 #define CONN_TYPE 1
 #define CONACC_TYPE 2

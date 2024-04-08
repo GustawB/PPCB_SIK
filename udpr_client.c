@@ -24,6 +24,9 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
     struct sockaddr_in loc_server_addr = *server_addr;
     int socket_fd = create_socket(UDPR_PROT_ID, data);
 
+    clock_t tic = clock();
+    long long int send_data;
+
     // Set timeouts for the server.
     set_timeouts(-1, socket_fd, data);
 
@@ -39,6 +42,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
         b_connecton_closed = assert_write(bytes_written, sizeof(connection_data), socket_fd, -1, NULL, data);
         if (!b_connecton_closed) {
             // Try to get a CONACC package.
+            send_data += bytes_written;
             CONACC conacc_pck;
             ssize_t bytes_read = recvfrom(socket_fd, &conacc_pck,
                                     sizeof(conacc_pck), 0,
@@ -89,6 +93,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
             b_connecton_closed = assert_write(bytes_written, pck_size, socket_fd, -1, data_pck, data);
             
             if (!b_connecton_closed) {
+                send_data += bytes_written;
                 // Managed to send the data, try to get an ACC.
                 ACC acc_pck;
                 retransmit_iter = 1;
@@ -144,6 +149,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
                             bytes_written = sendto(socket_fd, data_pck, pck_size, 0,
                                             (struct sockaddr*)&loc_server_addr, addr_length);
                             b_connecton_closed = assert_write(bytes_written, pck_size, socket_fd, -1, NULL, data);
+                            send_data += bytes_written;
                             ++retransmit_iter;
                         }
                     }
@@ -185,6 +191,12 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
                 }
             }
         }
+    }
+
+    if (DEBUG_STATE == 1) {
+        clock_t toc = clock();
+        printf("Elapsed: %f seconds\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+        printf("Bytes send in total: %lld\n", send_data);
     }
 
     // End the connection.

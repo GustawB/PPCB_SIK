@@ -45,6 +45,9 @@ void run_tcp_server(uint16_t port) {
         // Set timeouts for the client.
         set_timeouts(socket_fd, client_fd, NULL);
 
+        clock_t tic = clock();
+        long long int send_data = 0;
+
         // Get a CONN package.
         CONN connect_data;
         ssize_t bytes_read = read_n_bytes(client_fd, &connect_data, sizeof(connect_data));
@@ -63,6 +66,7 @@ void run_tcp_server(uint16_t port) {
             ssize_t bytes_written = write_n_bytes(client_fd, &con_ack_data, sizeof(con_ack_data));
             b_connection_closed = assert_write(bytes_written, sizeof(con_ack_data), socket_fd, client_fd, NULL, NULL);
             if (!b_connection_closed) {
+                send_data += bytes_written;
                 // Read data from the client.
                 uint64_t byte_count = be64toh(connect_data.data_length);
                 uint64_t pck_number = 0;
@@ -96,6 +100,7 @@ void run_tcp_server(uint16_t port) {
                             b_connection_closed = assert_write(bytes_written, sizeof(error_pck), 
                                                                 socket_fd, client_fd, recv_data, NULL);
                             if (!b_connection_closed) {
+                                send_data += bytes_written;
                                 free(recv_data);
                             }
                             b_connection_closed = true;
@@ -131,9 +136,16 @@ void run_tcp_server(uint16_t port) {
 
                 if (!b_connection_closed) {
                     // Close the connection.
+                    send_data += bytes_written;
                     close(client_fd);
                 }
             }
+        }
+
+         if (DEBUG_STATE == 1) {
+            clock_t toc = clock();
+            printf("Elapsed: %f seconds\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+            printf("Bytes send in total: %lld\n", send_data);
         }
     }
     

@@ -58,7 +58,10 @@ void run_udp_server(uint16_t port) {
                 }
             }
             errno = 0;
-        }        
+        }
+
+        clock_t tic = clock();
+        long long int send_data = 0;
 
         // Send CONACC back to the client.
         CONACC resp = {.pkt_type_id = CONACC_TYPE, .session_id = connection_data.session_id};
@@ -67,6 +70,7 @@ void run_udp_server(uint16_t port) {
         b_connection_closed = assert_write(bytes_written, sizeof(resp), socket_fd, -1, NULL, recv_data);
 
         if(!b_connection_closed) {
+            send_data += bytes_written;
             // If we managed to send the CONACC, read the data.
             uint64_t pck_number = 0;
             uint64_t byte_count = be64toh(connection_data.data_length);
@@ -106,6 +110,7 @@ void run_udp_server(uint16_t port) {
                             bytes_written = sendto(socket_fd, &conrjt_pck, sizeof(conrjt_pck),
                                                         0, (struct sockaddr*)&client_addr, addr_length);
                             b_connection_closed = assert_write(bytes_written, sizeof(conrjt_pck), socket_fd, -1, NULL, recv_data);
+                            send_data += bytes_written;
                         }
                         else if (bytes_read == sizeof(CONN) && connection_data.prot_id == UDPR_PROT_ID && 
                                 dt->pkt_type_id == CONN_TYPE && dt->session_id == connection_data.session_id) {
@@ -119,6 +124,7 @@ void run_udp_server(uint16_t port) {
                                 bytes_written = sendto(socket_fd, &rjt_pck, sizeof(rjt_pck),
                                                                     0, (struct sockaddr*)&client_addr, addr_length);
                                 b_connection_closed = assert_write(bytes_written, sizeof(rjt_pck), socket_fd, -1, NULL, recv_data);
+                                send_data += bytes_written;
                                 if (dt->session_id == connection_data.session_id) {
                                     // It was our client, we have to close the connection.
                                     b_connection_closed = true;
@@ -147,6 +153,7 @@ void run_udp_server(uint16_t port) {
                                                         0, (struct sockaddr*)&client_addr, addr_length);
                             b_connection_closed = assert_write(bytes_written, sizeof(resp), socket_fd, -1, NULL, recv_data);
                             ++retransmits_counter;
+                            send_data += bytes_written;
                         }
                         else {
                             // Retransmit ACC.
@@ -155,6 +162,7 @@ void run_udp_server(uint16_t port) {
                                                         0, (struct sockaddr*)&client_addr, addr_length);
                             b_connection_closed = assert_write(bytes_written, sizeof(acc_retr), socket_fd, -1, NULL, recv_data);
                             ++retransmits_counter;
+                            send_data += bytes_written;
                         }
                     }
 
@@ -180,6 +188,7 @@ void run_udp_server(uint16_t port) {
                         bytes_written = sendto(socket_fd, &acc_resp, sizeof(acc_resp),
                                                     0, (struct sockaddr*)&client_addr, addr_length);
                         b_connection_closed = assert_write(bytes_written, sizeof(acc_resp), socket_fd, -1, NULL, recv_data);
+                        send_data += bytes_written;
                     }
                 }
             }
@@ -190,7 +199,14 @@ void run_udp_server(uint16_t port) {
                 bytes_written = sendto(socket_fd, &rcvd_resp, sizeof(rcvd_resp),
                                                     0, (struct sockaddr*)&client_addr, addr_length);
                 b_connection_closed = assert_write(bytes_written, sizeof(rcvd_resp), socket_fd, -1, NULL, recv_data);
+                send_data += bytes_written;
             }
+        }
+
+        if (DEBUG_STATE == 1) {
+            clock_t toc = clock();
+            printf("Elapsed: %f seconds\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+            printf("Bytes send in total: %lld\n", send_data);
         }
     }
 

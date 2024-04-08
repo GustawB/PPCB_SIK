@@ -26,6 +26,9 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
     struct sockaddr_in loc_server_addr = *server_addr;
     int socket_fd = create_socket(UDP_PROT_ID, data);
 
+    clock_t tic = clock();
+    long long int send_data = 0;
+
     // Set timeouts for the server.
     set_timeouts(-1, socket_fd, data);
 
@@ -39,6 +42,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
     bool b_connection_closed = assert_write(bytes_written, sizeof(connection_data), socket_fd, -1, NULL, data);
 
     if (!b_connection_closed) {
+        send_data += bytes_written;
         // Get the CONACC package.
         CONACC ack_pck;
         ssize_t bytes_read = recvfrom(socket_fd, &ack_pck,
@@ -72,6 +76,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
             b_connection_closed = assert_write(bytes_written, pck_size, socket_fd, -1, data_pck, data);
 
             if (!b_connection_closed) {
+                send_data += bytes_written;
                 free(data_pck);
                 ++pck_number;
                 data_length -= curr_len;
@@ -90,5 +95,11 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
         }
     }
 
+    if (DEBUG_STATE == 1) {
+        clock_t toc = clock();
+        printf("Elapsed: %f seconds\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+        printf("Bytes send in total: %lld\n", send_data);
+    }
+    
     close(socket_fd);
 }
