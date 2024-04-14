@@ -46,7 +46,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
         b_connection_closed = assert_read(bytes_read, sizeof(ack_pck), 
                                             socket_fd, -1, NULL, data);
         if (!b_connection_closed) {
-            //b_connection_closed = get_connac_pck(&ack_pck, session_id);
+            b_connection_closed = get_connac_pck(&ack_pck, session_id);
         }
 
         // Send data to the server.
