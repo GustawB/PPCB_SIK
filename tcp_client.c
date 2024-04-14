@@ -1,19 +1,5 @@
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <endian.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-
-#include "tcp_server.h"
+#include "tcp_client.h"
 #include "protconst.h"
-#include "common.h"
-#include "err.h"
 
 void run_tcp_client(struct sockaddr_in* server_addr, char* data, 
                     uint64_t data_length, uint64_t session_id) {
@@ -81,6 +67,12 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
 
             // Send the package to the server.
             bytes_written = write_n_bytes(socket_fd, data_pck, pck_size);
+            if (bytes_written == -1 && errno == 104) {
+                printf("104\n");
+            }
+            if (bytes_written == -1 && errno == 32) {
+                printf("32\n");
+            }
             b_connection_closed = assert_write(bytes_written, pck_size, 
                                                 socket_fd, -1, data_pck, data);
             

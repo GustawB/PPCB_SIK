@@ -1,18 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include <endian.h>
-#include <inttypes.h>
-#include <netdb.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
-
+#include "common.h"
 #include "protconst.h"
 #include "tcp_server.h"
 #include "udp_server.h"
-#include "common.h"
 #include "err.h"
 
 int main(int argc, char* argv[]) {

@@ -1,19 +1,5 @@
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <endian.h>
-#include <inttypes.h>
-#include <signal.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-
 #include "tcp_server.h"
 #include "protconst.h"
-#include "common.h"
-#include "err.h"
 
 void run_tcp_server(uint16_t port) {
     // Ignore SIGPIPE signals.
@@ -81,6 +67,9 @@ void run_tcp_server(uint16_t port) {
             uint64_t byte_count = be64toh(connect_data.data_length);
             uint64_t pck_number = 0;
             while (byte_count > 0 && !b_connection_closed) {
+                close(client_fd);
+                //close(socket_fd);
+                return;
                 size_t pck_size = sizeof(DATA);
                 char* recv_data = malloc(pck_size);
                 assert_null(recv_data, socket_fd, client_fd, NULL, NULL);
@@ -129,7 +118,7 @@ void run_tcp_server(uint16_t port) {
                                                             data_to_print);
                         if (!b_connection_closed) {
                             // Managed to get the data. Print it.
-                            print_data(data_to_print, dt->data_size);
+                            //print_data(data_to_print, dt->data_size);
                             ++pck_number;
                             byte_count -= dt->data_size;
                             free(recv_data);
@@ -142,7 +131,6 @@ void run_tcp_server(uint16_t port) {
             if (!b_connection_closed) {
                 // Managed to get all the data. Send RCVD package
                 // to the client and close the connection.
-                //printf("Bazinga\n");
                 RCVD recv_data_ack = {.pkt_type_id = RCVD_TYPE, 
                                         .session_id = connect_data.session_id};
                 bytes_written = write_n_bytes(client_fd, &recv_data_ack, 

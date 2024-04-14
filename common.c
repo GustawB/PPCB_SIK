@@ -1,17 +1,5 @@
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <errno.h>
-#include <inttypes.h>
-#include <limits.h>
-#include <netdb.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-
-#include "err.h"
 #include "common.h"
+#include "err.h"
 #include "protconst.h"
 
 void init_data_pck(uint64_t session_id, uint64_t pck_number, 

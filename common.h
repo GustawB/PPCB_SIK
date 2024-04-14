@@ -1,12 +1,25 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <inttypes.h>
+#include <errno.h>
+#include <unistd.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/socket.h>
 #include <time.h>
+#include <endian.h>
+#include <netdb.h>
+#include <stdbool.h>
+#include <limits.h>
+#include <stddef.h>
+#include <signal.h>
 
 #define TCP_PROT "tcp"
 #define UDP_PROT "udp"
@@ -16,7 +29,7 @@
 #define UDP_PROT_ID 2
 #define UDPR_PROT_ID 3
 
-#define PCK_SIZE 64000
+#define PCK_SIZE 8
 
 #define DEBUG_STATE 1
 

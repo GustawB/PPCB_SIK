@@ -1,19 +1,5 @@
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <endian.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-
-#include "udp_server.h"
+#include "udp_client.h"
 #include "protconst.h"
-#include "common.h"
-#include "err.h"
 
 void run_udp_client(const struct sockaddr_in* server_addr, char* data, 
                     uint64_t data_length, uint64_t session_id) {
