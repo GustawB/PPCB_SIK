@@ -83,7 +83,7 @@ void run_tcp_server(uint16_t port) {
             while (byte_count > 0 && !b_connection_closed) {
                 size_t pck_size = sizeof(DATA);
                 char* recv_data = malloc(pck_size);
-                assert_malloc(recv_data, socket_fd, client_fd, NULL, NULL);
+                assert_null(recv_data, socket_fd, client_fd, NULL, NULL);
 
                 bytes_read = read_n_bytes(client_fd, recv_data, 
                                             sizeof(DATA) - 8);

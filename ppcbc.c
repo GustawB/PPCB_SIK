@@ -31,14 +31,14 @@ int main(int argc, char* argv[]) {
     // where n is the size of the input data.
     uint64_t buffer_size = 1024;
     char* buffer = malloc(buffer_size * sizeof(char));
-    assert_malloc(buffer, -1, -1, NULL, NULL);
+    assert_null(buffer, -1, -1, NULL, NULL);
     ssize_t bytes_read = 0;
     uint64_t data_length = 0;
     do {
         if (buffer_size - data_length == 0) {
             buffer_size *= 2;
             buffer = realloc(buffer, buffer_size * sizeof(char));
-            assert_malloc(buffer, -1, -1, NULL, NULL);
+            assert_null(buffer, -1, -1, NULL, NULL);
         }
         bytes_read = read(STDIN_FILENO, buffer + data_length, 
                             buffer_size - data_length);
@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
 
     if(data_length != buffer_size) {
         buffer = realloc(buffer, data_length);
-        assert_malloc(buffer, -1, -1, NULL, NULL);
+        assert_null(buffer, -1, -1, NULL, NULL);
     }
     
     // Generate a random session indetificator.
