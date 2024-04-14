@@ -248,7 +248,6 @@ bool get_nonudpr_rcvd(const RCVD* rcvd_pck, uint64_t session_id) {
     if (rcvd_pck->pkt_type_id == RJT_TYPE && 
         rcvd_pck->session_id == session_id) {
         // We got rejected.
-        printf("Our session: %ld\n", session_id);
         error("Data Rejected");
         return true;
     }
