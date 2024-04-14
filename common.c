@@ -15,7 +15,7 @@
 #include "protconst.h"
 
 void init_data_pck(uint64_t session_id, uint64_t pck_number, 
-                                uint32_t data_size, char* data_pck, const char* data) {
+                    uint32_t data_size, char* data_pck, const char* data) {
     uint8_t pck_type = DATA_TYPE;
     char* data_iter = data_pck;
 
@@ -55,7 +55,7 @@ ssize_t read_n_bytes(int fd, void* dsptr, size_t n) {
     ssize_t bytes_left = n;
     char* iter_ptr = dsptr;
 
-    // Read stream as long as there is no error and we didn't read everything. 
+    // Read stream as long as there is no error and we didn't read everything.
     while (bytes_left > 0) {
         if ((bytes_read = read(fd, iter_ptr, bytes_left)) < 0) {
             // read() failed, return < 0.
@@ -77,11 +77,11 @@ ssize_t write_n_bytes(int fd, void* dsptr, size_t n) {
     ssize_t bytes_left = n;
     const char* iter_ptr = dsptr;
 
-    // Write to the stream as long as there is no error and we didn't write everything.
+    // Write to the stream as long as there is 
+    // no error and we didn't write everything.
     while(bytes_left > 0) {
         if ((bytes_written = write(fd, iter_ptr, bytes_left)) <= 0) {
             // There was some kind of error.
-            //printf("%ld\n", bytes_written);
             return bytes_written;
         }
 
@@ -92,7 +92,8 @@ ssize_t write_n_bytes(int fd, void* dsptr, size_t n) {
     return n - bytes_left;
 }
 
-struct sockaddr_in get_server_address(char const *host, uint16_t port, int8_t protocol_id) {
+struct sockaddr_in get_server_address(char const *host, 
+                                        uint16_t port, int8_t protocol_id) {
     struct addrinfo hints;
     // Malloc would require me to worry about freeing the memory later,
     // and I don't need pointer arithmetics.
@@ -137,7 +138,9 @@ void close_fd(int fd) {
     }
 }
 
-bool assert_write(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup, char* data_from_stream) {
+bool assert_write(ssize_t result, ssize_t to_cmp, 
+                    int main_fd, int secondary_fd, 
+                    char* data_to_cleanup, char* data_from_stream) {
     if(result < 0) {
         cleanup(data_to_cleanup);
         if (errno == EPIPE) {
@@ -163,7 +166,9 @@ bool assert_write(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd,
     return false;
 }
 
-bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup, char* data_from_stream) {
+bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd,
+                 int secondary_fd, char* data_to_cleanup,
+                 char* data_from_stream) {
     if (result < 0) {
         cleanup(data_to_cleanup);
         if (errno == EAGAIN) {
@@ -196,7 +201,8 @@ bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, 
     return false;
 }
 
-void assert_malloc(char* data, int main_fd, int secondary_fd, char* data_to_cleanup, char* data_from_stream) {
+void assert_null(char* data, int main_fd, int secondary_fd,
+                 char* data_to_cleanup, char* data_from_stream) {
     if (data == NULL) {
         close_fd(main_fd);
         close_fd(secondary_fd);
@@ -207,10 +213,6 @@ void assert_malloc(char* data, int main_fd, int secondary_fd, char* data_to_clea
 }
 
 void print_data(char* data, size_t len) {
-    // Create a valid string.
-    char ch = '\0';
-    memcpy(data + len, &ch, 1);
-    //printf("%s", data);
     fwrite(data, sizeof(char), len, stdout);
     fflush(stdout);
 }
@@ -278,13 +280,15 @@ int create_socket(uint8_t protocol_id, char* data_from_stream) {
     return socket_fd;
 }
 
-int setup_socket(struct sockaddr_in* addr, uint8_t protocol_id, uint16_t port, char* data_from_stream) {
+int setup_socket(struct sockaddr_in* addr, uint8_t protocol_id, 
+                    uint16_t port, char* data_from_stream) {
     // Create a socket with IPv4 protocol.
     int socket_fd = create_socket(protocol_id, data_from_stream);
 
     // Bind the socket to the local adress.
     init_sockaddr(addr, port);
-    if (bind(socket_fd, (struct sockaddr*)addr, (socklen_t) sizeof(*addr)) < 0){
+    if (bind(socket_fd, (struct sockaddr*)addr,
+         (socklen_t) sizeof(*addr)) < 0){
         close(socket_fd);
         cleanup(data_from_stream);
         syserr("ERROR: Failed to bind a socket");
@@ -293,16 +297,19 @@ int setup_socket(struct sockaddr_in* addr, uint8_t protocol_id, uint16_t port, c
     return socket_fd;
 }
 
-void set_timeouts(int main_fd, int secondary_fd, char* data_from_stream) {
+void set_timeouts(int main_fd, int secondary_fd,
+                     char* data_from_stream) {
     struct timeval time_options = {.tv_sec = MAX_WAIT, .tv_usec = 0};
-    if (setsockopt(secondary_fd, SOL_SOCKET, SO_RCVTIMEO, &time_options, sizeof(time_options)) < 0) {
+    if (setsockopt(secondary_fd, SOL_SOCKET, SO_RCVTIMEO,
+        &time_options, sizeof(time_options)) < 0) {
         close_fd(main_fd);
         close_fd(secondary_fd);
         cleanup(data_from_stream);
         syserr("Failed to set timeouts");
     }
     
-    if (setsockopt(secondary_fd, SOL_SOCKET, SO_SNDTIMEO, &time_options, sizeof(time_options)) < 0) {
+    if (setsockopt(secondary_fd, SOL_SOCKET, SO_SNDTIMEO, 
+        &time_options, sizeof(time_options)) < 0) {
         close_fd(main_fd);
         close_fd(secondary_fd);
         cleanup(data_from_stream);

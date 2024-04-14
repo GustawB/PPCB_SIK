@@ -16,13 +16,9 @@
 #define UDP_PROT_ID 2
 #define UDPR_PROT_ID 3
 
-#ifndef PCK_SIZE
 #define PCK_SIZE 64000
-#endif
 
-#ifndef DEBUG_STATE
 #define DEBUG_STATE 1
-#endif 
 
 #define CONN_TYPE 1
 #define CONACC_TYPE 2
@@ -79,35 +75,72 @@ typedef struct __attribute__((__packed__)) {
     uint64_t session_id;
 } RCVD;
 
+/* Utility function to read the port number from the execution args. */
 uint16_t read_port(const char* string);
 
+/* Function that reads data in loop as long as the total 
+length didn't reach n. */
 ssize_t read_n_bytes(int fd, void* dsptr, size_t n);
+/* Function that writes data in loop as long as the total 
+length didn't reach n. */
 ssize_t write_n_bytes(int fd, void* dsptr, size_t n);
 
+/* Function that initializes a package of type DATA. */
 void init_data_pck(uint64_t session_id, uint64_t pck_number, 
-                                uint32_t data_size, char* data_pck, const char* data);
+                    uint32_t data_size, char* data_pck, const char* data);
 
+/* Function that initializes the given sockaddr_in structure. */
 void init_sockaddr(struct sockaddr_in* addr, uint16_t port);
 
-struct sockaddr_in get_server_address(char const *host, uint16_t port, int8_t protocol_id);
+/* Function that returns the server address based on the host, 
+post and protocol (TCP, UDP or UDPR). */
+struct sockaddr_in get_server_address(char const *host,
+                                         uint16_t port, int8_t protocol_id);
 
-bool assert_write(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup, char* data_from_stream);
-bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd, int secondary_fd, char* data_to_cleanup, char* data_from_stream);
+/* Function that checks whether the write function managed to 
+write to_cmp bytes. If not, passed sockets and data will be closed/freed. 
+Main socket/data will be freed if any error happens, and secondary data/socket
+ will be freed only if result == -1 and not because of EAGAIN.*/
+bool assert_write(ssize_t result, ssize_t to_cmp, int main_fd,
+                    int secondary_fd, char* main_data, char* secondary_data);
+/* Function that checks whether the read function managed to read to_cmp bytes.
+ If not, passed sockets and data will be closed/freed. 
+Main socket/data will be freed if any error happens, and secondary data/socket
+ will be freed only if result == -1 and not because of EAGAIN.*/
+bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd,
+                    int secondary_fd, char* main_data, char* secondary_data);
 
-void assert_malloc(char* data, int main_fd, int secondary_fd, char* data_to_cleanup, char* data_from_stream);
+/* Function that checks if the data pointer is not null.
+If so, it closes/clears passed params. */
+void assert_null(char* data, int main_fd, int secondary_fd,
+                    char* main_data, char* secondary_data);
 
+/* Function that prints len bytes of the given data. It's up to the user 
+to check if len is not bigger than the data length.*/
 void print_data(char* data, size_t len);
 
+/* Function that calculates the size of the package 
+to send based on the PCK_SIZE variable. */
 uint32_t calc_pck_size(uint64_t data_length);
 
+/* Function that check if the received package was CONACC from our session. */
 bool get_connac_pck(const CONACC* ack_pck,  uint64_t session_id);
 
+/* Function that check if the received package was RCVD from our session. */
 bool get_nonudpr_rcvd(const RCVD* ack_pck, uint64_t session_id);
 
-int create_socket(uint8_t protocol_id, char* data_from_stream);
+/* Function that creates socket based on the protocol_id 
+(SOCK_STREAM or SOCK_DGRAM). If the operation failed, 
+secondary_data will be freed. */
+int create_socket(uint8_t protocol_id, char* secondary_data);
 
-int setup_socket(struct sockaddr_in* addr, uint8_t protocol_id, uint16_t port, char* data_from_stream);
+/* Function responsible for creating and binding a socket based on the
+protocol_id and port. On failure, secondary_data will be cleaned */
+int setup_socket(struct sockaddr_in* addr, uint8_t protocol_id, 
+                    uint16_t port, char* secondary_data);
 
-void set_timeouts(int main_fd, int secondary_fd, char* data_from_stream);
+/* Function responsible for setting timeouts for the secondary_fd. 
+On failure, sockets and secondary_data will be closed/cleaned. */
+void set_timeouts(int main_fd, int secondary_fd, char* secondary_data);
 
 #endif

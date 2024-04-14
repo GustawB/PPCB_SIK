@@ -150,8 +150,8 @@ void run_tcp_server(uint16_t port) {
             double time_taken = (end.tv_sec - start.tv_sec) * 1e6;
             time_taken = (time_taken + (end.tv_usec - 
                                     start.tv_usec)) * 1e-6;
-            //printf("\nElapsed: %f seconds\n", time_taken);
-            //printf("Bytes send in total: %lld\n", send_data);
+            printf("\nElapsed: %f seconds\n", time_taken);
+            printf("Bytes send in total: %lld\n", send_data);
         }
     }
     
