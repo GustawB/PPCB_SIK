@@ -72,7 +72,7 @@ void run_udp_server(uint16_t port) {
         while(byte_count > 0 && !b_connection_closed) {
             addr_length = (socklen_t)sizeof(client_addr);
 
-            printf("Data left: %ld; Package wanted: %ld\n", byte_count, pck_number);
+            //printf("Data left: %ld; Package wanted: %ld\n", byte_count, pck_number);
             
             ssize_t bytes_read = recvfrom(socket_fd, recv_data, 
                                         MAX_PACKET_SIZE, 0,
@@ -81,7 +81,7 @@ void run_udp_server(uint16_t port) {
             int retransmits_counter = 1;
             // Try to get the data.
             while(!b_connection_closed) {
-                printf("Retransmit %d %d\n", retransmits_counter, MAX_RETRANSMITS);
+                //printf("Retransmit %d %d\n", retransmits_counter, MAX_RETRANSMITS);
                 if ((bytes_read < 0 && errno != EAGAIN) || bytes_read == 0) { 
                     // Will produce error message
                     b_connection_closed = assert_read
@@ -89,7 +89,7 @@ void run_udp_server(uint16_t port) {
                                         socket_fd, -1, NULL, recv_data);
                 }
                 else if (bytes_read > 0) {
-                    printf("Got something; pck wanted: %ld\n", pck_number);
+                    //printf("Got something; pck wanted: %ld\n", pck_number);
                     // I can process data further.
                     // We got something.
                     DATA* dt = (DATA*)recv_data;
@@ -139,6 +139,7 @@ void run_udp_server(uint16_t port) {
                             dt->session_id != connection_data.session_id) {
                         // Someone wants to connect with us (UwU UwU). 
                         // REJECT THEM.
+                        printf("UwU UwU\n");
                         CONRJT conrjt_pck = {.pkt_type_id = CONRJT_TYPE, 
                                             .session_id = dt->session_id};
                         bytes_written = sendto(socket_fd, 
@@ -174,7 +175,8 @@ void run_udp_server(uint16_t port) {
                         error("Failed to receive data because of the timeout");
                     }
                     else if (pck_number == 0) {
-                        printf("Retransmit CONACC\n");
+                        errno = 0;
+                        //printf("Retransmit CONACC\n");
                         // First package, retransmit CONACC.
                         ssize_t bytes_written = 
                         sendto(socket_fd, &resp, sizeof(resp), 0, 
@@ -186,8 +188,9 @@ void run_udp_server(uint16_t port) {
                         send_data += bytes_written;
                     }
                     else {
+                        errno = 0;
                         // Retransmit ACC.
-                        printf("Retransmit ACC %ld\n", pck_number - 1);
+                        //printf("Retransmit ACC %ld\n", pck_number - 1);
                         ACC acc_retr = {.pkt_nr = pck_number - 1, 
                                     .pkt_type_id = ACC_TYPE, 
                                     .session_id = connection_data.session_id};
@@ -215,7 +218,7 @@ void run_udp_server(uint16_t port) {
                 byte_count -= dt->data_size;
                 ++pck_number;
 
-                print_data(recv_data + sizeof(DATA) - 8, dt->data_size);
+                //print_data(recv_data + sizeof(DATA) - 8, dt->data_size);
 
                 if (connection_data.prot_id == UDPR_PROT_ID) {
                     // Send the ACK package.

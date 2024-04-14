@@ -54,7 +54,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
                     }
                 }
             }
-            // EAGAIN, repeat the process.
+            errno = 0;// EAGAIN, repeat the process.
         }
 
         ++retransmit_iter;
@@ -148,6 +148,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
                     error("Timeout");
                 }
                 else {
+                    errno = 0;
                     printf("Retransmit DATA %ld\n", pck_number);
                     bytes_written = sendto(socket_fd, data_pck, pck_size, 0,
                                             (struct sockaddr*)&loc_server_addr,
@@ -195,7 +196,6 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
                 // We received something that we can't skip.
                 b_connection_closed = true;
                 error("Invalid package in RCVD");
-                errno = 0;
             }
         }
     }
