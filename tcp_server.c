@@ -64,7 +64,7 @@ void run_tcp_server(uint16_t port) {
                                                 sizeof(con_ack_data), 
                                                 socket_fd, client_fd, 
                                                 NULL, NULL);
-            printf("Ugabuga\n");
+                                                
             send_data += bytes_written;
             // Read data from the client.
             uint64_t byte_count = be64toh(connect_data.data_length);
@@ -85,7 +85,6 @@ void run_tcp_server(uint16_t port) {
                     if (dt->pkt_type_id != DATA_TYPE || 
                         dt->session_id != connect_data.session_id || 
                         dt->pkt_nr != pck_number) {
-                        printf("FGHJKL\n");
                         // Invalid package, send RJT to
                         // the client and move on.
                         RJT error_pck = {.session_id = 
@@ -103,7 +102,6 @@ void run_tcp_server(uint16_t port) {
                         }
                         b_connection_closed = true;
                         close(client_fd);
-                        //close(socket_fd);
                     }
                     else  {
                         // Valid package, read the data part.
