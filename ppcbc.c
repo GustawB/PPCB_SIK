@@ -27,7 +27,8 @@ int main(int argc, char* argv[]) {
         fatal("Protocol %s is not supported.", argv[1]);
     }
 
-    // Read data from the standard input.
+    // Read data from the standard input. Implemented in O(nlogn), 
+    // where n is the size of the input data.
     uint64_t buffer_size = 1024;
     char* buffer = malloc(buffer_size * sizeof(char));
     assert_malloc(buffer, -1, -1, NULL, NULL);
@@ -39,7 +40,8 @@ int main(int argc, char* argv[]) {
             buffer = realloc(buffer, buffer_size * sizeof(char));
             assert_malloc(buffer, -1, -1, NULL, NULL);
         }
-        bytes_read = read(STDIN_FILENO, buffer + data_length, buffer_size - data_length);
+        bytes_read = read(STDIN_FILENO, buffer + data_length, 
+                            buffer_size - data_length);
         if (bytes_read == -1) {
             free(buffer);
             syserr("Failed to read data from STDIN");
@@ -57,19 +59,22 @@ int main(int argc, char* argv[]) {
     srand((unsigned)time(&t));
     uint64_t session_id = rand();
 
-    // Start the appropriate server.
+    // Start an appropriate server.
     const char* host_name = argv[2];
     uint16_t port = read_port(argv[3]);
     if (strcmp(argv[1], "tcp") == 0) {
-        struct sockaddr_in server_addr = get_server_address(host_name, port, TCP_PROT_ID);
+        struct sockaddr_in server_addr = 
+                get_server_address(host_name, port, TCP_PROT_ID);
         run_tcp_client(&server_addr, buffer, data_length, session_id);
     }
     else if (strcmp(argv[1], "udp") == 0) {
-        struct sockaddr_in server_addr = get_server_address(host_name, port, UDP_PROT_ID);
+        struct sockaddr_in server_addr = 
+                get_server_address(host_name, port, UDP_PROT_ID);
         run_udp_client(&server_addr, buffer, data_length, session_id);
     }
     else { // UDPR protocol.
-        struct sockaddr_in server_addr = get_server_address(host_name, port, UDPR_PROT_ID);
+        struct sockaddr_in server_addr = 
+                get_server_address(host_name, port, UDPR_PROT_ID);
         run_udpr_client(&server_addr, buffer, data_length, session_id);
     }
     
