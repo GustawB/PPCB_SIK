@@ -1,6 +1,8 @@
 #include "tcp_client.h"
 #include "protconst.h"
 
+#include <signal.h>
+
 void run_tcp_client(struct sockaddr_in* server_addr, char* data, 
                     uint64_t data_length, uint64_t session_id) {
     // Ignore SIGPIPE signals.
@@ -67,14 +69,16 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
 
             // Send the package to the server.
             bytes_written = write_n_bytes(socket_fd, data_pck, pck_size);
-            if (bytes_written == -1 && errno == 104) {
-                printf("104\n");
+            if (bytes_written == -1 && (errno == EPIPE || errno == 104)) {
+                printf("ERRNO: %d\n", errno);
+                // Broken pipe, server closed the connction.
+                free(data_pck);
+                b_connection_closed = true;
             }
-            if (bytes_written == -1 && errno == 32) {
-                printf("32\n");
-            }
-            b_connection_closed = assert_write(bytes_written, pck_size, 
+            else {
+                b_connection_closed = assert_write(bytes_written, pck_size, 
                                                 socket_fd, -1, data_pck, data);
+            }
             
             if (!b_connection_closed) {
                 send_data += bytes_written;
@@ -86,18 +90,18 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
             }
         }
 
+        // Exited the data-sending loop, now we wait for the RCVD/RJT.
+        RCVD recv_data_ack;
+        ssize_t bytes_read = read_n_bytes(socket_fd, &recv_data_ack,
+                sizeof(recv_data_ack));
+        printf("Bytes read: %ld\n", bytes_read);
+        b_connection_closed = assert_read(bytes_read, 
+                                        sizeof(recv_data_ack),
+                                            socket_fd, -1, NULL, data);
         if (!b_connection_closed) {
-            // Managed to send all the data, now we wait for the RCVD.
-            RCVD recv_data_ack;
-            ssize_t bytes_read = read_n_bytes(socket_fd, &recv_data_ack,
-                    sizeof(recv_data_ack));
-            b_connection_closed = assert_read(bytes_read, 
-                                            sizeof(recv_data_ack),
-                                             socket_fd, -1, NULL, data);
-            if (!b_connection_closed) {
-                b_connection_closed = get_nonudpr_rcvd(&recv_data_ack, 
-                                                        session_id);
-            }
+            printf("DTFGHJKL\n");
+            b_connection_closed = get_nonudpr_rcvd(&recv_data_ack, 
+                                                    session_id);
         }
     }
 

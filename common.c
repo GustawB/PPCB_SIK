@@ -132,7 +132,7 @@ bool assert_write(ssize_t result, ssize_t to_cmp,
     if(result < 0) {
         cleanup(data_to_cleanup);
         if (errno == EPIPE) {
-            // Connection closed.
+            // Connection closed. Maninly for servers.
             close_fd(secondary_fd);
             error("Connection closed.");
             errno = 0;
@@ -236,6 +236,7 @@ bool get_nonudpr_rcvd(const RCVD* rcvd_pck, uint64_t session_id) {
     if (rcvd_pck->pkt_type_id == RJT_TYPE && 
         rcvd_pck->session_id == session_id) {
         // We got rejected.
+        errno = 0;
         error("Data Rejected");
         return true;
     }

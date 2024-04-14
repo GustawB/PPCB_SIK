@@ -1,6 +1,8 @@
 #include "tcp_server.h"
 #include "protconst.h"
 
+#include <signal.h>
+
 void run_tcp_server(uint16_t port) {
     // Ignore SIGPIPE signals.
     signal(SIGPIPE, SIG_IGN);
@@ -62,14 +64,12 @@ void run_tcp_server(uint16_t port) {
                                                 sizeof(con_ack_data), 
                                                 socket_fd, client_fd, 
                                                 NULL, NULL);
+            printf("Ugabuga\n");
             send_data += bytes_written;
             // Read data from the client.
             uint64_t byte_count = be64toh(connect_data.data_length);
             uint64_t pck_number = 0;
             while (byte_count > 0 && !b_connection_closed) {
-                close(client_fd);
-                //close(socket_fd);
-                return;
                 size_t pck_size = sizeof(DATA);
                 char* recv_data = malloc(pck_size);
                 assert_null(recv_data, socket_fd, client_fd, NULL, NULL);
@@ -85,6 +85,7 @@ void run_tcp_server(uint16_t port) {
                     if (dt->pkt_type_id != DATA_TYPE || 
                         dt->session_id != connect_data.session_id || 
                         dt->pkt_nr != pck_number) {
+                        printf("FGHJKL\n");
                         // Invalid package, send RJT to
                         // the client and move on.
                         RJT error_pck = {.session_id = 
@@ -102,6 +103,7 @@ void run_tcp_server(uint16_t port) {
                         }
                         b_connection_closed = true;
                         close(client_fd);
+                        //close(socket_fd);
                     }
                     else  {
                         // Valid package, read the data part.
@@ -127,7 +129,7 @@ void run_tcp_server(uint16_t port) {
                     }
                 }
             }
-
+            
             if (!b_connection_closed) {
                 // Managed to get all the data. Send RCVD package
                 // to the client and close the connection.
