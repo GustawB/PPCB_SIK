@@ -17,7 +17,7 @@
 
 void run_udp_client(const struct sockaddr_in* server_addr, char* data, 
                     uint64_t data_length, uint64_t session_id) {
-    // Ignore SIGPIPE signals; stays for now.
+    // Ignore SIGPIPE signals.
     signal(SIGPIPE, SIG_IGN);
 
     // Create a socket.

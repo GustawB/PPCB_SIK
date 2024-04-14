@@ -117,7 +117,7 @@ void run_tcp_server(uint16_t port) {
                     else  {
                         // Valid package, read the data part.
                         char* data_to_print = malloc(dt->data_size + 1);
-                        assert_malloc(recv_data, socket_fd, client_fd, 
+                        assert_null(recv_data, socket_fd, client_fd, 
                                         recv_data, NULL);
                         bytes_read = read_n_bytes(client_fd, data_to_print,
                                                     dt->data_size);
