@@ -26,8 +26,11 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
     struct sockaddr_in loc_server_addr = *server_addr;
     int socket_fd = create_socket(UDP_PROT_ID, data);
 
-    clock_t tic = clock();
+    struct timeval start, end;
+
     long long int send_data = 0;
+    gettimeofday(&start, NULL);
+    //printf("Start; Session id: %ld\n", session_id);
 
     // Set timeouts for the server.
     set_timeouts(-1, socket_fd, data);
@@ -49,20 +52,21 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
                                         sizeof(ack_pck), flags,
                                         (struct sockaddr*)&loc_server_addr,
                                         &addr_length);
-        ssize_t result = get_connac_pck(socket_fd, &ack_pck, bytes_read, session_id, data);
-        if(result <= 0) {
-            b_connection_closed = true;
+        b_connection_closed = assert_read(bytes_read, sizeof(ack_pck), socket_fd, -1, NULL, data);
+        if (!b_connection_closed) {
+            b_connection_closed = get_connac_pck(&ack_pck, session_id);
         }
 
         // Send data to the server.
         uint64_t pck_number = 0;
         const char* data_ptr = data;
         while(data_length > 0 && !b_connection_closed) {
-            // recvfrom can change the value of th eaddr_length,
+            //sleep(1);
+            // recvfrom can change the value of the addr_length,
             // so I have to update it here over and over again.
             addr_length = (socklen_t)sizeof(loc_server_addr);
             uint32_t curr_len = calc_pck_size(data_length);
-            //printf("Data chunk size: %d; Data left: %ld\n", curr_len, data_length);
+            //printf("Data left: %ld; pck number: %ld\n", data_length, pck_number);
 
             // Initialize a package.
             ssize_t pck_size = sizeof(DATA) - 8 + curr_len;
@@ -71,6 +75,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
 
             init_data_pck(session_id, pck_number, 
                                     curr_len, data_pck, data_ptr);
+
             bytes_written = sendto(socket_fd, data_pck, pck_size, flags,
                                     (struct sockaddr*)&loc_server_addr, addr_length);
             b_connection_closed = assert_write(bytes_written, pck_size, socket_fd, -1, data_pck, data);
@@ -83,21 +88,29 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
                 data_ptr += curr_len;
             }
         }
-
+        //printf("Pre REVD\n");
         if (!b_connection_closed) {
             // Get a RCVD package and finish execution.
             RCVD rcvd_pck;
+            //printf("Get REVD\n");
             bytes_read = recvfrom(socket_fd, &rcvd_pck,
                                             sizeof(rcvd_pck), flags,
                                             (struct sockaddr*)&loc_server_addr,
                                             &addr_length);
-            get_nonudpr_rcvd(socket_fd, &rcvd_pck, bytes_read, session_id, data);
+            //printf("Get REVD\n");
+            b_connection_closed = assert_read(bytes_read, sizeof(rcvd_pck), socket_fd, -1, NULL, data);
+            if (!b_connection_closed) {
+                b_connection_closed = get_nonudpr_rcvd(&rcvd_pck, session_id);
+            }
         }
     }
 
     if (DEBUG_STATE == 1) {
-        clock_t toc = clock();
-        printf("Elapsed: %f seconds\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+        gettimeofday(&end, NULL);
+        double time_taken = (end.tv_sec - start.tv_sec) * 1e6;
+        time_taken = (time_taken + (end.tv_usec - 
+                                start.tv_usec)) * 1e-6;
+        printf("\nElapsed: %f seconds\n", time_taken);
         printf("Bytes send in total: %lld\n", send_data);
     }
     

@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <time.h>
 
 #define TCP_PROT "tcp"
@@ -16,11 +17,11 @@
 #define UDPR_PROT_ID 3
 
 #ifndef PCK_SIZE
-#define PCK_SIZE 64000
+#define PCK_SIZE 8
 #endif
 
 #ifndef DEBUG_STATE
-#define DEBUG_STATE 0
+#define DEBUG_STATE 1
 #endif 
 
 #define CONN_TYPE 1
@@ -99,11 +100,9 @@ void print_data(char* data, size_t len);
 
 uint32_t calc_pck_size(uint64_t data_length);
 
-ssize_t get_connac_pck(int socket_fd, const CONACC* ack_pck, 
-                        ssize_t bytes_read, uint64_t session_id, char* data_from_stream);
+bool get_connac_pck(const CONACC* ack_pck,  uint64_t session_id);
 
-ssize_t get_nonudpr_rcvd(int socket_fd, const RCVD* ack_pck, 
-                        ssize_t bytes_read, uint64_t session_id, char* data_from_stream);
+bool get_nonudpr_rcvd(const RCVD* ack_pck, uint64_t session_id);
 
 int create_socket(uint8_t protocol_id, char* data_from_stream);
 

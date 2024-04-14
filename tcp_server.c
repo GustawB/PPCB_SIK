@@ -45,8 +45,11 @@ void run_tcp_server(uint16_t port) {
         // Set timeouts for the client.
         set_timeouts(socket_fd, client_fd, NULL);
 
-        clock_t tic = clock();
+        struct timeval start, end;
+
+        gettimeofday(&start, NULL);
         long long int send_data = 0;
+        printf("Start\n");
 
         // Get a CONN package.
         CONN connect_data;
@@ -74,7 +77,6 @@ void run_tcp_server(uint16_t port) {
                 //printf("Send CONACC, byte count: %ld\n", byte_count);
                 while (byte_count > 0 && !b_connection_closed) {
                     //printf("Entered read loop\n");
-                    //uint32_t curr_len = calc_pck_size(byte_count);
 
                     size_t pck_size = sizeof(DATA);
                     char* recv_data = malloc(pck_size);
@@ -82,6 +84,7 @@ void run_tcp_server(uint16_t port) {
 
                     //printf("Current length: %d\n", curr_len);
 
+                    //printf("Data left: %ld\n", byte_count);
                     bytes_read = read_n_bytes(client_fd, recv_data, sizeof(DATA) - 8);
                     //printf("Data read: %ld\n", bytes_read);
                     b_connection_closed = assert_read(bytes_read, sizeof(DATA) - 8, socket_fd, client_fd, recv_data, NULL);
@@ -114,8 +117,8 @@ void run_tcp_server(uint16_t port) {
                             b_connection_closed = assert_read(bytes_read, dt->data_size, socket_fd, client_fd, recv_data, data_to_print);
                             if (!b_connection_closed) {
                                 // Managed to get the data. Print it.
-                                fwrite(data_to_print, sizeof(char), dt->data_size, stdout);
-                                fflush(stdout);
+                                //fwrite(data_to_print, sizeof(char), dt->data_size, stdout);
+                                //fflush(stdout);
                                 ++pck_number;
                                 byte_count -= dt->data_size;
                                 free(recv_data);
@@ -142,9 +145,12 @@ void run_tcp_server(uint16_t port) {
             }
         }
 
-         if (DEBUG_STATE == 1) {
-            clock_t toc = clock();
-            printf("Elapsed: %f seconds\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+        if (DEBUG_STATE == 1) {
+            gettimeofday(&end, NULL);
+            double time_taken = (end.tv_sec - start.tv_sec) * 1e6;
+            time_taken = (time_taken + (end.tv_usec - 
+                                    start.tv_usec)) * 1e-6;
+            printf("\nElapsed: %f seconds\n", time_taken);
             printf("Bytes send in total: %lld\n", send_data);
         }
     }

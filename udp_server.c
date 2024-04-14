@@ -44,24 +44,27 @@ void run_udp_server(uint16_t port) {
                                         sizeof(connection_data), 0,
                                         (struct sockaddr*)&client_addr,
                                         &addr_length);
-            
             if ((bytes_read < 0 && errno != EAGAIN) || bytes_read >= 0) {
                 b_connection_closed = assert_read(bytes_read, sizeof(connection_data), socket_fd, -1, NULL, recv_data);
                 if (!b_connection_closed && connection_data.pkt_type_id == CONN_TYPE &&
                     (connection_data.prot_id == UDP_PROT_ID || connection_data.prot_id == UDPR_PROT_ID)) {
                     // We got a valid CONN.
+                    printf("Client port: %d\n", client_addr.sin_port);
                     break;
                 }
                 else if (bytes_read > 0) {
-                    error("Wanted CONN UDP/UDPR, got something else");
+                    //error("Wanted CONN UDP/UDPR, got something else");
                     b_connection_closed = false;
                 }
             }
-            errno = 0;
+            errno = 0; // EAGAIN, clear the error.
         }
 
-        clock_t tic = clock();
+        struct timeval start, end;
+
         long long int send_data = 0;
+        gettimeofday(&start, NULL);
+        printf("Start: Session ID: %ld\n", connection_data.session_id);
 
         // Send CONACC back to the client.
         CONACC resp = {.pkt_type_id = CONACC_TYPE, .session_id = connection_data.session_id};
@@ -69,143 +72,152 @@ void run_udp_server(uint16_t port) {
                                     0, (struct sockaddr*)&client_addr, addr_length);
         b_connection_closed = assert_write(bytes_written, sizeof(resp), socket_fd, -1, NULL, recv_data);
 
-        if(!b_connection_closed) {
-            send_data += bytes_written;
-            // If we managed to send the CONACC, read the data.
-            uint64_t pck_number = 0;
-            uint64_t byte_count = be64toh(connection_data.data_length);
-            while(byte_count > 0 && !b_connection_closed) {
-                addr_length = (socklen_t)sizeof(client_addr);
+        send_data += bytes_written;
+        // If we managed to send the CONACC, read the data.
+        uint64_t pck_number = 0;
+        uint64_t byte_count = be64toh(connection_data.data_length);
+        while(byte_count > 0 && !b_connection_closed) {
+            addr_length = (socklen_t)sizeof(client_addr);
 
-                //printf("Data chunk size: %d; Data left: %ld\n", curr_len, byte_count);
-                
-                ssize_t bytes_read = recvfrom(socket_fd, recv_data, MAX_PACKET_SIZE, 0,
-                                    (struct sockaddr*)&client_addr, &addr_length);
-                    int retransmits_counter = 1;
-                // Try to get the data.
-                while(!b_connection_closed) {
-                    //printf("Retransmit %d %d\n", retransmits_counter, MAX_RETRANSMITS);
-                    if ((bytes_read < 0 && errno != EAGAIN) || bytes_read == 0) { // Will produce error message
-                        b_connection_closed = assert_read(bytes_read, MAX_PACKET_SIZE, socket_fd, -1, NULL, recv_data);
+            printf("Data left: %ld; Package wanted: %ld\n", byte_count, pck_number);
+            
+            //printf("before get\n");
+            ssize_t bytes_read = recvfrom(socket_fd, recv_data, MAX_PACKET_SIZE, 0,
+                                (struct sockaddr*)&client_addr, &addr_length);
+            //printf("after get\n");
+            int retransmits_counter = 1;
+            // Try to get the data.
+            while(!b_connection_closed) {
+                printf("Retransmit %d %d\n", retransmits_counter, MAX_RETRANSMITS);
+                if ((bytes_read < 0 && errno != EAGAIN) || bytes_read == 0) { // Will produce error message
+                    b_connection_closed = assert_read(bytes_read, MAX_PACKET_SIZE, socket_fd, -1, NULL, recv_data);
+                }
+                else if (bytes_read > 0) {
+                    printf("Got something; pck wanted: %ld\n", pck_number);
+                    // And I can process it further
+                    // We got something hyhyhy.
+                    DATA* dt = (DATA*)recv_data;
+                    if (bytes_read >= (int32_t)(sizeof(DATA) - 8) && dt->pkt_type_id == DATA_TYPE && 
+                        dt->pkt_nr == pck_number && dt->session_id == connection_data.session_id) {
+                        // We got our data package :))))))
+                        //printf("Finally\n");
+                        break;        
                     }
-                    else if (bytes_read > 0) {
-                        // And I can process it further
-                        // We got something hyhyhy.
-                        DATA* dt = (DATA*)recv_data;
-                        if (bytes_read >= (int32_t)(sizeof(DATA) - 8) && dt->pkt_type_id == DATA_TYPE && 
-                            dt->pkt_nr == pck_number && dt->session_id == connection_data.session_id) {
-                            // We got our data package :))))))
-                            break;        
-                        }
-                        else if (connection_data.prot_id == UDPR_PROT_ID && retransmits_counter == MAX_RETRANSMITS) {
-                            // I'm not checking this in loop because if we make the last retransmit,
-                            // we still want to see if it had any positive inpact on us.
-                            b_connection_closed = true;
-                            error("Failed to receive data because of the timeout");
-                        }
-                        else if (bytes_read == sizeof(CONN) && dt->pkt_type_id == CONN_TYPE &&
-                                    dt->session_id != connection_data.session_id) {
-                            // Someone wants to connect with us (UwU UwU). REJECT THEM.
-                            CONRJT conrjt_pck = {.pkt_type_id = CONRJT_TYPE, .session_id = dt->session_id};
-                            bytes_written = sendto(socket_fd, &conrjt_pck, sizeof(conrjt_pck),
-                                                        0, (struct sockaddr*)&client_addr, addr_length);
-                            b_connection_closed = assert_write(bytes_written, sizeof(conrjt_pck), socket_fd, -1, NULL, recv_data);
+                    else if (connection_data.prot_id == UDPR_PROT_ID && retransmits_counter == MAX_RETRANSMITS) {
+                        // I'm not checking this in loop because if we make the last retransmit,
+                        // we still want to see if it had any positive inpact on us.
+                        b_connection_closed = true;
+                        //printf("retransmits: %d\n", retransmits_counter);
+                        error("Failed to receive data because of the timeout");
+                    }
+                    else if ((size_t)bytes_read >= sizeof(DATA) - 8 &&  dt->pkt_type_id == DATA_TYPE) {
+                        if (connection_data.prot_id != UDPR_PROT_ID || dt->pkt_nr >= pck_number || 
+                            dt->session_id != connection_data.session_id) {
+                            // Someone send us an invalid package. Send him RJT and close the connection if it was our client.
+                            printf("Wanted nr: %ld; Got: %ld; Their session: %ld; Out session: %ld\n", pck_number, dt->pkt_nr, dt->session_id, connection_data.session_id);
+                            RJT rjt_pck = {.pkt_type_id = RJT_TYPE, .session_id = dt->session_id, .pkt_nr = dt->pkt_nr};
+                            bytes_written = sendto(socket_fd, &rjt_pck, sizeof(rjt_pck),
+                                                                0, (struct sockaddr*)&client_addr, addr_length);
+                            b_connection_closed = assert_write(bytes_written, sizeof(rjt_pck), socket_fd, -1, NULL, recv_data);
                             send_data += bytes_written;
-                        }
-                        else if (bytes_read == sizeof(CONN) && connection_data.prot_id == UDPR_PROT_ID && 
-                                dt->pkt_type_id == CONN_TYPE && dt->session_id == connection_data.session_id) {
-                            continue;
-                        }
-                        else if ((size_t)bytes_read >= sizeof(DATA) - 8 &&  dt->pkt_type_id == DATA_TYPE) {
-                            if (connection_data.prot_id != UDPR_PROT_ID || dt->pkt_nr >= pck_number || 
-                                dt->session_id != connection_data.session_id) {
-                                // Someone send us an invalid package. Send him RJT and close the connection if it was our client.
-                                RJT rjt_pck = {.pkt_type_id = RJT_TYPE, .session_id = dt->session_id, .pkt_nr = dt->pkt_nr};
-                                bytes_written = sendto(socket_fd, &rjt_pck, sizeof(rjt_pck),
-                                                                    0, (struct sockaddr*)&client_addr, addr_length);
-                                b_connection_closed = assert_write(bytes_written, sizeof(rjt_pck), socket_fd, -1, NULL, recv_data);
-                                send_data += bytes_written;
-                                if (dt->session_id == connection_data.session_id) {
-                                    // It was our client, we have to close the connection.
-                                    b_connection_closed = true;
-                                }
+                            if (dt->session_id == connection_data.session_id) {
+                                // It was our client, we have to close the connection.
+                                b_connection_closed = true;
                             }
                         }
-                        else {
-                            // Garbage
-                            b_connection_closed = true;
-                            error("Invalid package");
-                        }
-                    }  
-                    else {// errno == EAGAIN
-                        if (connection_data.prot_id != UDPR_PROT_ID) {
-                            // Will produce error message
-                            b_connection_closed = assert_read(bytes_read, MAX_PACKET_SIZE, socket_fd, -1, NULL, recv_data);
-                        }
-                        else if (retransmits_counter == MAX_RETRANSMITS) {
-                            // Fuck this shit I'm out.
-                            b_connection_closed = true;
-                            error("Failed to receive data because of the timeout");
-                        }
-                        else if (pck_number == 0) {
-                            // First package, retransmit CONACC.
-                            ssize_t bytes_written = sendto(socket_fd, &resp, sizeof(resp),
-                                                        0, (struct sockaddr*)&client_addr, addr_length);
-                            b_connection_closed = assert_write(bytes_written, sizeof(resp), socket_fd, -1, NULL, recv_data);
-                            ++retransmits_counter;
-                            send_data += bytes_written;
-                        }
-                        else {
-                            // Retransmit ACC.
-                            ACC acc_retr = {.pkt_nr = pck_number - 1, .pkt_type_id = ACC_TYPE, .session_id = connection_data.session_id};
-                            bytes_written = sendto(socket_fd, &acc_retr, sizeof(acc_retr),
-                                                        0, (struct sockaddr*)&client_addr, addr_length);
-                            b_connection_closed = assert_write(bytes_written, sizeof(acc_retr), socket_fd, -1, NULL, recv_data);
-                            ++retransmits_counter;
-                            send_data += bytes_written;
-                        }
                     }
-
-                    if (!b_connection_closed) {
-                        bytes_read = recvfrom(socket_fd, recv_data, MAX_PACKET_SIZE, 0,
-                                (struct sockaddr*)&client_addr, &addr_length);
+                    else if (bytes_read == sizeof(CONN) && dt->pkt_type_id == CONN_TYPE &&
+                                dt->session_id != connection_data.session_id) {
+                        //printf("Reject\n");
+                        // Someone wants to connect with us (UwU UwU). REJECT THEM.
+                        CONRJT conrjt_pck = {.pkt_type_id = CONRJT_TYPE, .session_id = dt->session_id};
+                        bytes_written = sendto(socket_fd, &conrjt_pck, sizeof(conrjt_pck),
+                                                    0, (struct sockaddr*)&client_addr, addr_length);
+                        b_connection_closed = assert_write(bytes_written, sizeof(conrjt_pck), socket_fd, -1, NULL, recv_data);
+                        send_data += bytes_written;
+                    }
+                    else if (!(bytes_read == sizeof(CONN) && connection_data.prot_id == UDPR_PROT_ID && 
+                            dt->pkt_type_id == CONN_TYPE && dt->session_id == connection_data.session_id)) {
+                        // Garbage
+                        b_connection_closed = true;
+                        error("Invalid package");
+                    }
+                }  
+                else {// errno == EAGAIN
+                    if (connection_data.prot_id != UDPR_PROT_ID) {
+                        // Will produce error message
+                        b_connection_closed = assert_read(bytes_read, MAX_PACKET_SIZE, socket_fd, -1, NULL, recv_data);
+                    }
+                    else if (retransmits_counter == MAX_RETRANSMITS) {
+                        // Fuck this shit I'm out.
+                        b_connection_closed = true;
+                        printf("retransmits: %d\n", retransmits_counter);
+                        error("Failed to receive data because of the timeout");
+                    }
+                    else if (pck_number == 0) {
+                        printf("Retransmit CONACC\n");
+                        // First package, retransmit CONACC.
+                        ssize_t bytes_written = sendto(socket_fd, &resp, sizeof(resp),
+                                                    0, (struct sockaddr*)&client_addr, addr_length);
+                        b_connection_closed = assert_write(bytes_written, sizeof(resp), socket_fd, -1, NULL, recv_data);
+                        ++retransmits_counter;
+                        send_data += bytes_written;
+                    }
+                    else {
+                        // Retransmit ACC.
+                        printf("Retransmit ACC %ld\n", pck_number - 1);
+                        ACC acc_retr = {.pkt_nr = pck_number - 1, .pkt_type_id = ACC_TYPE, .session_id = connection_data.session_id};
+                        bytes_written = sendto(socket_fd, &acc_retr, sizeof(acc_retr),
+                                                    0, (struct sockaddr*)&client_addr, addr_length);
+                        b_connection_closed = assert_write(bytes_written, sizeof(acc_retr), socket_fd, -1, NULL, recv_data);
+                        ++retransmits_counter;
+                        send_data += bytes_written;
                     }
                 }
 
                 if (!b_connection_closed) {
-                    // We finally managed to get the motherfucking package.
-                    DATA* dt = (DATA*)recv_data;
-                    byte_count -= dt->data_size;
-                    ++pck_number;
-
-                    //printf("Got package\n");
-                    fwrite(recv_data + 21, sizeof(char), dt->data_size, stdout);
-                    fflush(stdout);
-
-                    if (connection_data.prot_id == UDPR_PROT_ID) {
-                        // Send the ACK package.
-                        ACC acc_resp = {.pkt_type_id = ACC_TYPE, .pkt_nr = pck_number - 1, .session_id = connection_data.session_id};
-                        bytes_written = sendto(socket_fd, &acc_resp, sizeof(acc_resp),
-                                                    0, (struct sockaddr*)&client_addr, addr_length);
-                        b_connection_closed = assert_write(bytes_written, sizeof(acc_resp), socket_fd, -1, NULL, recv_data);
-                        send_data += bytes_written;
-                    }
+                    bytes_read = recvfrom(socket_fd, recv_data, MAX_PACKET_SIZE, 0,
+                            (struct sockaddr*)&client_addr, &addr_length);
                 }
             }
 
-            if(!b_connection_closed) {
-                // we got all the data, now we immediately send RCVD and end the connection.
-                RCVD rcvd_resp = {.pkt_type_id = RCVD_TYPE, .session_id = connection_data.session_id};
-                bytes_written = sendto(socket_fd, &rcvd_resp, sizeof(rcvd_resp),
-                                                    0, (struct sockaddr*)&client_addr, addr_length);
-                b_connection_closed = assert_write(bytes_written, sizeof(rcvd_resp), socket_fd, -1, NULL, recv_data);
-                send_data += bytes_written;
+            if (!b_connection_closed) {
+                // We finally managed to get the motherfucking package.
+                DATA* dt = (DATA*)recv_data;
+                byte_count -= dt->data_size;
+                ++pck_number;
+
+                //printf("Got package\n");
+                //fwrite(recv_data + sizeof(DATA) - 8, sizeof(char), dt->data_size, stdout);
+                //fflush(stdout);
+
+                if (connection_data.prot_id == UDPR_PROT_ID) {
+                    // Send the ACK package.
+                    ACC acc_resp = {.pkt_type_id = ACC_TYPE, .pkt_nr = pck_number - 1, .session_id = connection_data.session_id};
+                    bytes_written = sendto(socket_fd, &acc_resp, sizeof(acc_resp),
+                                                0, (struct sockaddr*)&client_addr, addr_length);
+                    b_connection_closed = assert_write(bytes_written, sizeof(acc_resp), socket_fd, -1, NULL, recv_data);
+                    send_data += bytes_written;
+                }
             }
         }
 
+        if(!b_connection_closed) {
+            //printf("GOD DAMN MOTHERFUCKER\n");
+            // we got all the data, now we immediately send RCVD and end the connection.
+            RCVD rcvd_resp = {.pkt_type_id = RCVD_TYPE, .session_id = connection_data.session_id};
+            bytes_written = sendto(socket_fd, &rcvd_resp, sizeof(rcvd_resp),
+                                                0, (struct sockaddr*)&client_addr, addr_length);
+            b_connection_closed = assert_write(bytes_written, sizeof(rcvd_resp), socket_fd, -1, NULL, recv_data);
+            send_data += bytes_written;
+        }
+
         if (DEBUG_STATE == 1) {
-            clock_t toc = clock();
-            printf("Elapsed: %f seconds\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+            gettimeofday(&end, NULL);
+            double time_taken = (end.tv_sec - start.tv_sec) * 1e6;
+            time_taken = (time_taken + (end.tv_usec - 
+                                    start.tv_usec)) * 1e-6;
+            printf("\nElapsed: %f seconds\n", time_taken);
             printf("Bytes send in total: %lld\n", send_data);
         }
     }

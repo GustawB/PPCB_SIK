@@ -81,6 +81,7 @@ ssize_t write_n_bytes(int fd, void* dsptr, size_t n) {
     while(bytes_left > 0) {
         if ((bytes_written = write(fd, iter_ptr, bytes_left)) <= 0) {
             // There was some kind of error.
+            //printf("%ld\n", bytes_written);
             return bytes_written;
         }
 
@@ -224,42 +225,39 @@ uint32_t calc_pck_size(uint64_t data_length) {
     return curr_len;
 }
 
-ssize_t get_connac_pck(int socket_fd, const CONACC* ack_pck, ssize_t bytes_read, uint64_t session_id, char* data_from_stream) {
-    bool result = assert_read(bytes_read, sizeof(*ack_pck), socket_fd, -1, NULL, data_from_stream);
-    if (result) {return -1;}
-    else if (!result && ack_pck->pkt_type_id == CONRJT_TYPE && 
+bool get_connac_pck(const CONACC* ack_pck, uint64_t session_id) {
+    if (ack_pck->pkt_type_id == CONRJT_TYPE && 
         ack_pck->session_id == session_id) {
         // We got rejected by the server.
         error("Connection rejected");
-        return 0;
+        return true;
     }
-    else if (!result && (ack_pck->pkt_type_id != CONACC_TYPE ||
-            ack_pck->session_id != session_id)) {
+    else if (ack_pck->pkt_type_id != CONACC_TYPE ||
+            ack_pck->session_id != session_id) {
         // We got something invalid, end with error.
         error("Invalid package");
-        return -1;
+        return true;
     }
 
-    return 1;
+    return false;
 }
 
-ssize_t get_nonudpr_rcvd(int socket_fd, const RCVD* rcvd_pck, ssize_t bytes_read, uint64_t session_id, char* data_from_stream) {
-    bool result = assert_read(bytes_read, sizeof(*rcvd_pck), socket_fd, -1, NULL, data_from_stream);
-    if (result) {return -1;}
-    else if (!result && rcvd_pck->pkt_type_id == RJT_TYPE && 
+bool get_nonudpr_rcvd(const RCVD* rcvd_pck, uint64_t session_id) {
+    if (rcvd_pck->pkt_type_id == RJT_TYPE && 
         rcvd_pck->session_id == session_id) {
         // We got rejected.
+        printf("Our session: %ld\n", session_id);
         error("Data Rejected");
-        return 0;
+        return true;
     }
-    else if (!result && (rcvd_pck->pkt_type_id != RCVD_TYPE ||
-        rcvd_pck->session_id != session_id)) {
+    else if (rcvd_pck->pkt_type_id != RCVD_TYPE ||
+        rcvd_pck->session_id != session_id) {
         // We received invalid package.
         error("Invalid package");
-        return -1;
+        return true;
     }
 
-    return 1;
+    return false;
 }
 
 int create_socket(uint8_t protocol_id, char* data_from_stream) {
