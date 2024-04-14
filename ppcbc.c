@@ -28,35 +28,28 @@ int main(int argc, char* argv[]) {
     }
 
     // Read data from the standard input.
-    char* line = NULL;
-    char* data = NULL;
-    size_t n = 0;
+    uint64_t buffer_size = 1024;
+    char* buffer = malloc(buffer_size * sizeof(char));
+    assert_malloc(buffer, -1, -1, NULL, NULL);
     ssize_t bytes_read = 0;
     uint64_t data_length = 0;
-    // Read lines from standard input until EOF is encountered
-    while ((bytes_read = getline(&line, &n, stdin)) != -1) {
-        // Process each line here
-        data_length += bytes_read;
-        char* tmp = malloc(data_length);
-        if (tmp == NULL) {
-            free(line);
-            free(data);
-            fatal("Malloc failed");
+    do {
+        if (buffer_size - data_length == 0) {
+            buffer_size *= 2;
+            buffer = realloc(buffer, buffer_size * sizeof(char));
+            assert_malloc(buffer, -1, -1, NULL, NULL);
         }
-        memcpy(tmp, data, data_length - bytes_read);
-        free(data);
-        data = tmp;
-        tmp += data_length - bytes_read;
-        memcpy(tmp, line, bytes_read);
-        free(line);
-        line = NULL;
-        free(line);
-        line = NULL;
-    }
-    free(line);
-    if (errno != 0) {
-        free(data);
-        fatal("Geline failed");
+        bytes_read = read(STDIN_FILENO, buffer + data_length, buffer_size - data_length);
+        if (bytes_read == -1) {
+            free(buffer);
+            syserr("Failed to read data from STDIN");
+        }
+        data_length += bytes_read;
+    } while (bytes_read > 0);
+
+    if(data_length != buffer_size) {
+        buffer = realloc(buffer, data_length);
+        assert_malloc(buffer, -1, -1, NULL, NULL);
     }
     
     // Generate a random session indetificator.
@@ -69,19 +62,19 @@ int main(int argc, char* argv[]) {
     uint16_t port = read_port(argv[3]);
     if (strcmp(argv[1], "tcp") == 0) {
         struct sockaddr_in server_addr = get_server_address(host_name, port, TCP_PROT_ID);
-        run_tcp_client(&server_addr, data, data_length, session_id);
+        run_tcp_client(&server_addr, buffer, data_length, session_id);
     }
     else if (strcmp(argv[1], "udp") == 0) {
         struct sockaddr_in server_addr = get_server_address(host_name, port, UDP_PROT_ID);
-        run_udp_client(&server_addr, data, data_length, session_id);
+        run_udp_client(&server_addr, buffer, data_length, session_id);
     }
     else { // UDPR protocol.
         struct sockaddr_in server_addr = get_server_address(host_name, port, UDPR_PROT_ID);
-        run_udpr_client(&server_addr, data, data_length, session_id);
+        run_udpr_client(&server_addr, buffer, data_length, session_id);
     }
     
     if (data_length > 0) {
-        free(data);
+        free(buffer);
     }
 
     return 0;

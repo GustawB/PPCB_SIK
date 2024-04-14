@@ -49,7 +49,7 @@ void run_tcp_server(uint16_t port) {
 
         gettimeofday(&start, NULL);
         long long int send_data = 0;
-        printf("Start\n");
+        //printf("Start\n");
 
         // Get a CONN package.
         CONN connect_data;
@@ -117,8 +117,8 @@ void run_tcp_server(uint16_t port) {
                             b_connection_closed = assert_read(bytes_read, dt->data_size, socket_fd, client_fd, recv_data, data_to_print);
                             if (!b_connection_closed) {
                                 // Managed to get the data. Print it.
-                                //fwrite(data_to_print, sizeof(char), dt->data_size, stdout);
-                                //fflush(stdout);
+                                fwrite(data_to_print, sizeof(char), dt->data_size, stdout);
+                                fflush(stdout);
                                 ++pck_number;
                                 byte_count -= dt->data_size;
                                 free(recv_data);
@@ -150,8 +150,8 @@ void run_tcp_server(uint16_t port) {
             double time_taken = (end.tv_sec - start.tv_sec) * 1e6;
             time_taken = (time_taken + (end.tv_usec - 
                                     start.tv_usec)) * 1e-6;
-            printf("\nElapsed: %f seconds\n", time_taken);
-            printf("Bytes send in total: %lld\n", send_data);
+            //printf("\nElapsed: %f seconds\n", time_taken);
+            //printf("Bytes send in total: %lld\n", send_data);
         }
     }
     

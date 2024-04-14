@@ -17,7 +17,7 @@
 #define UDPR_PROT_ID 3
 
 #ifndef PCK_SIZE
-#define PCK_SIZE 8
+#define PCK_SIZE 64000
 #endif
 
 #ifndef DEBUG_STATE
