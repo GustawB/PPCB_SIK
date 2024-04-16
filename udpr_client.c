@@ -1,6 +1,12 @@
 #include "udpr_client.h"
 #include "protconst.h"
 
+bool volatile b_was_udpr_cl_interrupted = false;
+
+void udpr_cl_handler() {
+    b_was_udpr_cl_interrupted = true;
+}
+
 void run_udpr_client(const struct sockaddr_in* server_addr, char* data, 
                     uint64_t data_length, uint64_t session_id) {
     // Create a socket.
@@ -8,6 +14,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
     // a local copy of the sockaddr_in structure.
     struct sockaddr_in loc_server_addr = *server_addr;
     int socket_fd = create_socket(UDPR_PROT_ID, data);
+    ignore_signal(udpr_cl_handler, SIGINT);
 
     struct timeval start, end;
     long long int send_data = 0;
@@ -20,7 +27,8 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
     // CONN-CONACK loop
     int retransmit_iter = 0;
     bool b_connection_closed = false;
-    while (!b_connection_closed && retransmit_iter < MAX_RETRANSMITS) {
+    while (!b_connection_closed && retransmit_iter < MAX_RETRANSMITS &&
+            !b_was_udpr_cl_interrupted) {
         socklen_t addr_length = (socklen_t)sizeof(*server_addr);
         CONN connection_data = {.pkt_type_id = CONN_TYPE, 
                                 .session_id = session_id,
@@ -33,7 +41,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
         b_connection_closed = assert_write(bytes_written, 
                                             sizeof(connection_data), socket_fd,
                                             -1, NULL, data);
-        if (!b_connection_closed) {
+        if (!b_connection_closed && !b_was_udpr_cl_interrupted) {
             // Try to get a CONACC package.
             send_data += bytes_written;
             CONACC conacc_pck;
@@ -69,7 +77,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
     // Connection established. Start data sending loop.
     uint64_t pck_number = 0;
     const char* data_ptr = data;
-    while(data_length > 0 && !b_connection_closed) {
+    while(data_length > 0 && !b_connection_closed && !b_was_udpr_cl_interrupted) {
         // recvfrom can change the value of the addr_length,
         // so I have to update it here over and over again.
         socklen_t addr_length = (socklen_t)sizeof(loc_server_addr);
@@ -95,7 +103,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
         ACC acc_pck;
         retransmit_iter = 1;
         // DATA-ACC loop.
-        while (!b_connection_closed) {
+        while (!b_connection_closed && !b_was_udpr_cl_interrupted) {
             ssize_t bytes_read = recvfrom(socket_fd, &acc_pck,
                                             sizeof(acc_pck), 0,
                                             (struct sockaddr*)&loc_server_addr,
@@ -171,7 +179,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
         }
     }
 
-    if (!b_connection_closed) {
+    if (!b_connection_closed && !b_was_udpr_cl_interrupted) {
         // Get the RCVD package if we managed to send everything.
         RCVD rcvd_pck;
         while (!b_connection_closed) {

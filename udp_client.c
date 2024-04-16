@@ -1,10 +1,17 @@
 #include "udp_client.h"
 #include "protconst.h"
 
+bool volatile b_was_udp_cl_interrupted = false;
+
+void udp_cl_handler() {
+    b_was_udp_cl_interrupted = true;
+}
+
 void run_udp_client(const struct sockaddr_in* server_addr, char* data, 
                     uint64_t data_length, uint64_t session_id) {
     // Ignore SIGPIPE signals.
     signal(SIGPIPE, SIG_IGN);
+    ignore_signal(udp_cl_handler, SIGINT);
 
     // Create a socket.
     // Using server_addr directly caused problems, so I'm performing
@@ -22,20 +29,25 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
 
     // Send the CONN package.
     int flags = 0;
-    socklen_t addr_length = (socklen_t)sizeof(*server_addr);
-    CONN connection_data = {.pkt_type_id = CONN_TYPE, 
-                            .session_id = session_id,
-                            .prot_id = UDP_PROT_ID, 
-                            .data_length = htobe64(data_length)};
-    ssize_t bytes_written = sendto(socket_fd, &connection_data, 
+    bool b_connection_closed  = false;
+    ssize_t bytes_written = -1;
+    if (!b_was_udp_cl_interrupted) {
+        socklen_t addr_length = (socklen_t)sizeof(*server_addr);
+        CONN connection_data = {.pkt_type_id = CONN_TYPE, 
+                                .session_id = session_id,
+                                .prot_id = UDP_PROT_ID, 
+                                .data_length = htobe64(data_length)};
+        bytes_written = sendto(socket_fd, &connection_data, 
                                     sizeof(connection_data),
                                     flags, (struct sockaddr*)&loc_server_addr,
                                     addr_length);
-    bool b_connection_closed = assert_write
+        b_connection_closed = assert_write
                                 (bytes_written, sizeof(connection_data), 
                                 socket_fd, -1, NULL, data);
+    }
 
-    if (!b_connection_closed) {
+    if (!b_connection_closed && !b_was_udp_cl_interrupted) {
+        socklen_t addr_length = (socklen_t)sizeof(*server_addr);
         send_data += bytes_written;
         // Get the CONACC package.
         CONACC ack_pck;
@@ -45,14 +57,14 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
                                         &addr_length);
         b_connection_closed = assert_read(bytes_read, sizeof(ack_pck), 
                                             socket_fd, -1, NULL, data);
-        if (!b_connection_closed) {
+        if (!b_connection_closed && !b_connection_closed) {
             b_connection_closed = get_connac_pck(&ack_pck, session_id);
         }
 
         // Send data to the server.
         uint64_t pck_number = 0;
         const char* data_ptr = data;
-        while(data_length > 0 && !b_connection_closed) {
+        while(data_length > 0 && !b_connection_closed && !b_was_udp_cl_interrupted) {
             // recvfrom can change the value of the addr_length,
             // so I have to update it here over and over again.
             addr_length = (socklen_t)sizeof(loc_server_addr);
@@ -80,7 +92,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
                 data_ptr += curr_len;
             }
         }
-        if (!b_connection_closed) {
+        if (!b_connection_closed && !b_was_udp_cl_interrupted) {
             // Get a RCVD package and finish execution.
             RCVD rcvd_pck;
             bytes_read = recvfrom(socket_fd, &rcvd_pck,

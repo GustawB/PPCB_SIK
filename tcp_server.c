@@ -3,9 +3,16 @@
 
 #include <signal.h>
 
+bool volatile b_was_tcp_server_interrupted = false;
+
+void tcp_server_handler() {
+    b_was_tcp_server_interrupted = true;
+}
+
 void run_tcp_server(uint16_t port) {
     // Ignore SIGPIPE signals.
     signal(SIGPIPE, SIG_IGN);
+    ignore_signal(tcp_server_handler, SIGINT);
 
     // Create a socket with IPv4 protocol.
     struct sockaddr_in server_addr;
@@ -18,7 +25,7 @@ void run_tcp_server(uint16_t port) {
     }
 
     // Communication loop:
-    for (;;) {
+    while (!b_was_tcp_server_interrupted) {
         struct sockaddr_in client_addr;
 
         // Accept a connection with a client.
@@ -53,7 +60,7 @@ void run_tcp_server(uint16_t port) {
             b_connection_closed = true;
             close(client_fd);
         }
-        if(!b_connection_closed) {
+        if(!b_connection_closed && !b_was_tcp_server_interrupted) {
             // Managed to get the CONN package, its time to send 
             // CONACC back to the client.
             CONACC con_ack_data = {.pkt_type_id = CONACC_TYPE, 
@@ -69,7 +76,7 @@ void run_tcp_server(uint16_t port) {
             // Read data from the client.
             uint64_t byte_count = be64toh(connect_data.data_length);
             uint64_t pck_number = 0;
-            while (byte_count > 0 && !b_connection_closed) {
+            while (byte_count > 0 && !b_connection_closed && !b_was_tcp_server_interrupted) {
                 size_t pck_size = sizeof(DATA);
                 char* recv_data = malloc(pck_size);
                 assert_null(recv_data, socket_fd, client_fd, NULL, NULL);
@@ -128,7 +135,7 @@ void run_tcp_server(uint16_t port) {
                 }
             }
             
-            if (!b_connection_closed) {
+            if (!b_connection_closed && !b_was_tcp_server_interrupted) {
                 // Managed to get all the data. Send RCVD package
                 // to the client and close the connection.
                 RCVD recv_data_ack = {.pkt_type_id = RCVD_TYPE, 

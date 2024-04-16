@@ -3,9 +3,16 @@
 
 #define MAX_PACKET_SIZE 65536
 
+bool volatile b_was_udp_server_interrupted = false;
+
+void udp_server_handler() {
+    b_was_udp_server_interrupted = true;
+}
+
 void run_udp_server(uint16_t port) {
     // Ignore SIGPIPE signals.
     signal(SIGPIPE, SIG_IGN);
+    ignore_signal(udp_server_handler, SIGINT);
 
     // Yee Yee ass fcked up way to read datagrams.
     char* recv_data = malloc(MAX_PACKET_SIZE);
@@ -19,13 +26,13 @@ void run_udp_server(uint16_t port) {
     set_timeouts(-1, socket_fd, NULL);
 
     // Communication loop
-    for (;;) {
+    while(!b_was_udp_server_interrupted) {
         // Get a CONN package.
         struct sockaddr_in client_addr;
         socklen_t addr_length = (socklen_t)sizeof(client_addr);
         CONN connection_data;
         bool b_connection_closed = false;
-        while(!b_connection_closed) {
+        while(!b_connection_closed && !b_was_udp_server_interrupted) {
             ssize_t bytes_read = recvfrom(socket_fd, &connection_data,
                                         sizeof(connection_data), 0,
                                         (struct sockaddr*)&client_addr,
@@ -69,10 +76,10 @@ void run_udp_server(uint16_t port) {
         // If we managed to send the CONACC, read the data.
         uint64_t pck_number = 0;
         uint64_t byte_count = be64toh(connection_data.data_length);
-        while(byte_count > 0 && !b_connection_closed) {
+        while(byte_count > 0 && !b_connection_closed && !b_was_udp_server_interrupted) {
             addr_length = (socklen_t)sizeof(client_addr);
 
-            //printf("Data left: %ld; Package wanted: %ld\n", byte_count, pck_number);
+            printf("Data left: %ld; Package wanted: %ld\n", byte_count, pck_number);
             
             ssize_t bytes_read = recvfrom(socket_fd, recv_data, 
                                         MAX_PACKET_SIZE, 0,
@@ -80,7 +87,7 @@ void run_udp_server(uint16_t port) {
                                         &addr_length);
             int retransmits_counter = 1;
             // Try to get the data.
-            while(!b_connection_closed) {
+            while(!b_connection_closed && !b_was_udp_server_interrupted) {
                 //printf("Retransmit %d %d\n", retransmits_counter, MAX_RETRANSMITS);
                 if ((bytes_read < 0 && errno != EAGAIN) || bytes_read == 0) { 
                     // Will produce error message
@@ -212,7 +219,7 @@ void run_udp_server(uint16_t port) {
                 }
             }
 
-            if (!b_connection_closed) {
+            if (!b_connection_closed && !b_was_udp_server_interrupted) {
                 // We finally managed to get the package.
                 DATA* dt = (DATA*)recv_data;
                 byte_count -= dt->data_size;
@@ -236,7 +243,7 @@ void run_udp_server(uint16_t port) {
             }
         }
 
-        if(!b_connection_closed) {
+        if(!b_connection_closed && !b_was_udp_server_interrupted) {
             // We got all the data, now we immediately 
             // send RCVD and end the connection.
             RCVD rcvd_resp = {.pkt_type_id = RCVD_TYPE, 

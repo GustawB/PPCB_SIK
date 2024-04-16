@@ -305,3 +305,25 @@ void set_timeouts(int main_fd, int secondary_fd,
     }
 
 }
+
+void ignore_signal(void (*handler)(), int8_t signtoign) {
+    struct sigaction action;
+    sigset_t block_mask;
+
+    if (sigemptyset(&block_mask) < 0) {
+        syserr("sigemptyset failed");
+    }
+
+    if (handler == NULL) {
+        action.sa_handler = SIG_IGN;
+    }
+    else {
+        action.sa_handler = handler;
+    }
+    action.sa_mask = block_mask;
+    action.sa_flags = 0;
+
+    if (sigaction(signtoign, &action, 0) < 0) {
+        syserr("sigaction failed");
+    }
+}

@@ -156,4 +156,8 @@ int setup_socket(struct sockaddr_in* addr, uint8_t protocol_id,
 On failure, sockets and secondary_data will be closed/cleaned. */
 void set_timeouts(int main_fd, int secondary_fd, char* secondary_data);
 
+/* Function that sets handler function as the handler fo thr given signal.
+If handler is NULL, handler is set to SIG_IGN. */
+void ignore_signal(void (*handler)(), int8_t signtoign);
+
 #endif

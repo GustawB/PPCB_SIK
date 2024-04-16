@@ -3,10 +3,17 @@
 
 #include <signal.h>
 
+bool volatile b_was_tcp_cl_interrupted = false;
+
+void tcp_cl_handler() {
+    b_was_tcp_cl_interrupted = true;
+}
+
 void run_tcp_client(struct sockaddr_in* server_addr, char* data, 
                     uint64_t data_length, uint64_t session_id) {
     // Ignore SIGPIPE signals.
     signal(SIGPIPE, SIG_IGN);
+    ignore_signal(tcp_cl_handler, SIGINT);
 
     // Create a socket with IPv4 protocol.
     int socket_fd = create_socket(TCP_PROT_ID, data);
@@ -27,15 +34,19 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
     // Set timeouts for the server.
     set_timeouts(-1, socket_fd, data);
 
-    // Send a CONN package to mark the beginning of the connection.
-    CONN connect_data = {.pkt_type_id = CONN_TYPE, 
-                        .session_id = session_id, .prot_id = TCP_PROT_ID, 
-                        .data_length = htobe64(data_length)};
-    ssize_t bytes_written = write_n_bytes(socket_fd, &connect_data,
-                                            sizeof(connect_data));
-    bool b_connection_closed = assert_write(bytes_written,
+    bool b_connection_closed = false;
+    ssize_t bytes_written = -1;
+    if (!b_was_tcp_cl_interrupted) {
+        // Send a CONN package to mark the beginning of the connection.
+        CONN connect_data = {.pkt_type_id = CONN_TYPE, 
+                            .session_id = session_id, .prot_id = TCP_PROT_ID, 
+                            .data_length = htobe64(data_length)};
+        bytes_written = write_n_bytes(socket_fd, &connect_data,
+                                        sizeof(connect_data));
+        b_connection_closed = assert_write(bytes_written,
                                             sizeof(connect_data), socket_fd,
-                                             -1, NULL, data);
+                                            -1, NULL, data);
+    }
     
     CONACC con_ack_data;
     if (!b_connection_closed){
