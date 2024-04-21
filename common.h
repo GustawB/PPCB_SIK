@@ -129,7 +129,7 @@ void assert_null(char* data, int main_fd, int secondary_fd,
                     char* main_data, char* secondary_data);
 
 /* Function that tries to close the given socket and throw syserr on failure. */
-assert_socket_close(int fd);
+void assert_socket_close(int fd);
 
 /* Function that prints len bytes of the given data. It's up to the user 
 to check if len is not bigger than the data length.*/

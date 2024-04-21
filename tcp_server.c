@@ -30,21 +30,21 @@ void run_tcp_server(uint16_t port) {
 
         // Accept a connection with a client.
         // Below I'm making a compound literal.
+        bool b_connection_closed = false;
         int client_fd = accept(socket_fd, (struct sockaddr*)&client_addr, 
                                 &((socklen_t){sizeof(client_addr)}));
         if (client_fd < 0) {
-            //close(socket_fd);
+            b_connection_closed = true;
             error("Failed to connect with a client");
         }
 
         CONN connect_data;
-        bool b_connection_closed = true;
         ssize_t bytes_read = -1;
         struct timeval start, end;
         gettimeofday(&start, NULL);
         long long int send_data = 0;
         printf("Start\n");
-        if (!b_was_tcp_server_interrupted) {
+        if (!b_was_tcp_server_interrupted && !b_connection_closed) {
             // Set timeouts for the client.
             set_timeouts(socket_fd, client_fd, NULL);
 

@@ -114,7 +114,7 @@ struct sockaddr_in get_server_address(char const *host,
     return send_addr;
 }
 
-assert_socket_close(int fd){
+void assert_socket_close(int fd){
     if (close(fd) == -1) {
         // Failed to close the descriptor.
         syserr("Failed to close socket");
