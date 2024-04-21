@@ -124,7 +124,7 @@ void run_udp_server(uint16_t port) {
                             !assert_data_size(be32toh(dt->data_size))) {
                             // Someone send us an invalid package. Send him 
                             // RJT and close the connection if it was our client.
-                            printf("Wanted nr: %ld; Got: %ld; Their session: %ld; Out session: %ld\n", pck_number, dt->pkt_nr, dt->session_id, connection_data.session_id);
+                            printf("Wanted nr: %ld; Got: %ld; Their session: %ld; Out session: %ld\n", pck_number, be64toh(dt->pkt_nr), dt->session_id, connection_data.session_id);
                             RJT rjt_pck = {.pkt_type_id = RJT_TYPE, 
                                             .session_id = dt->session_id, 
                                             .pkt_nr = dt->pkt_nr};

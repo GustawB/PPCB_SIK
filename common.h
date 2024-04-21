@@ -29,7 +29,7 @@
 #define UDP_PROT_ID 2
 #define UDPR_PROT_ID 3
 
-#define PCK_SIZE 64000
+#define PCK_SIZE 2048
 
 #define DEBUG_STATE 1
 

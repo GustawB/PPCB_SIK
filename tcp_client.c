@@ -76,9 +76,8 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
             char* data_pck = malloc(pck_size);
             assert_null(data_pck, socket_fd, -1, NULL, data);
 
-            uint32_t be_curr_len = htobe32(curr_len);
             init_data_pck(session_id, htobe64(pck_number), 
-                                    be_curr_len, data_pck, data_ptr);
+                                    htobe32(curr_len), data_pck, data_ptr);
 
             // Send the package to the server.
             bytes_written = write_n_bytes(socket_fd, data_pck, pck_size);
