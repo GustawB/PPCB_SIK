@@ -14,7 +14,7 @@ void run_udp_server(uint16_t port) {
     signal(SIGPIPE, SIG_IGN);
     ignore_signal(udp_server_handler, SIGINT);
 
-    // Yee Yee ass fcked up way to read datagrams.
+    // Buffer for reading datagrams.
     char* recv_data = malloc(MAX_PACKET_SIZE);
     assert_null(recv_data, -1, -1, NULL, NULL);
 
@@ -102,7 +102,7 @@ void run_udp_server(uint16_t port) {
                     DATA* dt = (DATA*)recv_data;
                     if (bytes_read >= (int32_t)(sizeof(DATA) - 8) && 
                         dt->pkt_type_id == DATA_TYPE && 
-                        dt->pkt_nr == pck_number && dt->session_id == 
+                        be64toh(dt->pkt_nr) == pck_number && dt->session_id == 
                         connection_data.session_id) {
                         // We got our data package :))))))
                         break;        
@@ -118,7 +118,7 @@ void run_udp_server(uint16_t port) {
                     else if ((size_t)bytes_read >= sizeof(DATA) - 8 && 
                             dt->pkt_type_id == DATA_TYPE) {
                         if (connection_data.prot_id != UDPR_PROT_ID || 
-                            dt->pkt_nr >= pck_number || 
+                            be64toh(dt->pkt_nr) >= pck_number || 
                             dt->session_id != connection_data.session_id) {
                             // Someone send us an invalid package. Send him 
                             // RJT and close the connection if it was our client.
@@ -198,7 +198,7 @@ void run_udp_server(uint16_t port) {
                         errno = 0;
                         // Retransmit ACC.
                         //printf("Retransmit ACC %ld\n", pck_number - 1);
-                        ACC acc_retr = {.pkt_nr = pck_number - 1, 
+                        ACC acc_retr = {.pkt_nr = htobe64(pck_number - 1), 
                                     .pkt_type_id = ACC_TYPE, 
                                     .session_id = connection_data.session_id};
                         bytes_written = 
@@ -222,23 +222,23 @@ void run_udp_server(uint16_t port) {
             if (!b_connection_closed && !b_was_udp_server_interrupted) {
                 // We finally managed to get the package.
                 DATA* dt = (DATA*)recv_data;
-                byte_count -= dt->data_size;
+                byte_count -= be32toh(dt->data_size);
                 ++pck_number;
 
-                //print_data(recv_data + sizeof(DATA) - 8, dt->data_size);
+                //print_data(recv_data + sizeof(DATA) - 8, be32toh(dt->data_size));
 
                 if (connection_data.prot_id == UDPR_PROT_ID) {
                     // Send the ACK package.
                     ACC acc_resp = {.pkt_type_id = ACC_TYPE, 
-                                    .pkt_nr = pck_number - 1, 
+                                    .pkt_nr = htobe64(pck_number - 1), 
                                     .session_id = connection_data.session_id};
                     bytes_written = 
-                    sendto(socket_fd, &acc_resp, sizeof(acc_resp), 0, 
-                    (struct sockaddr*)&client_addr, addr_length);
+                        sendto(socket_fd, &acc_resp, sizeof(acc_resp), 0,
+                        (struct sockaddr*)&client_addr, addr_length);
                     b_connection_closed = 
-                    assert_write(bytes_written, sizeof(acc_resp), 
-                    socket_fd, -1, NULL, recv_data);
-                    send_data += bytes_written;
+                        assert_write(bytes_written, sizeof(acc_resp), 
+                        socket_fd, -1, NULL, recv_data);
+                        send_data += bytes_written;
                 }
             }
         }
@@ -250,9 +250,9 @@ void run_udp_server(uint16_t port) {
                                 .session_id = connection_data.session_id};
             bytes_written = 
             sendto(socket_fd, &rcvd_resp, sizeof(rcvd_resp), 0, 
-            (struct sockaddr*)&client_addr, addr_length);
+                (struct sockaddr*)&client_addr, addr_length);
             b_connection_closed = assert_write(bytes_written, 
-            sizeof(rcvd_resp), socket_fd, -1, NULL, recv_data);
+                sizeof(rcvd_resp), socket_fd, -1, NULL, recv_data);
             send_data += bytes_written;
         }
 

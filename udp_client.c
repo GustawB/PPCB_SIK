@@ -75,8 +75,8 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
             char* data_pck = malloc(pck_size);
             assert_null(data_pck, socket_fd, -1, NULL, data);
 
-            init_data_pck(session_id, pck_number, 
-                                    curr_len, data_pck, data_ptr);
+            init_data_pck(session_id, htobe64(pck_number), 
+                                    htobe32(curr_len), data_pck, data_ptr);
 
             bytes_written = sendto(socket_fd, data_pck, pck_size, flags,
                                     (struct sockaddr*)&loc_server_addr, 

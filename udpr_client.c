@@ -88,8 +88,8 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
         char* data_pck = malloc(pck_size);
         assert_null(data_pck, socket_fd, -1, NULL, data);
         
-        init_data_pck(session_id, pck_number, 
-                                curr_len, data_pck, data_ptr);
+        init_data_pck(session_id, htobe64(pck_number), 
+                                htobe32(curr_len), data_pck, data_ptr);
 
         // Send data to the server.
         ssize_t bytes_written = sendto(socket_fd, data_pck, pck_size, 0,
@@ -116,7 +116,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
             else if (bytes_read > 0) {
                 if (bytes_read == sizeof(ACC) && acc_pck.pkt_type_id == 
                     ACC_TYPE && acc_pck.session_id == session_id && 
-                    acc_pck.pkt_nr == pck_number) {
+                    be64toh(acc_pck.pkt_nr) == pck_number) {
                     // We received a confirmation, let's proceed.
                     printf("Received ACK\n");
                     break;
@@ -129,8 +129,9 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
                     error("Timeout");
                 }
                 else if (bytes_read == sizeof(RJT) && acc_pck.pkt_type_id ==
-                        RJT_TYPE && acc_pck.session_id == session_id) {
-                    // Package got rejected.
+                        RJT_TYPE && acc_pck.session_id == session_id &&
+                        be64toh(acc_pck.pkt_nr) == pck_number) {
+                    // Valid package got rejected.
                     b_connection_closed = true;
                     close(socket_fd);
                     error("Data rejected");
@@ -138,7 +139,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
                 else if (!(bytes_read == sizeof(ACC) && 
                         acc_pck.pkt_type_id == ACC_TYPE && 
                         acc_pck.session_id == session_id && 
-                        acc_pck.pkt_nr < pck_number) &&
+                        be64toh(acc_pck.pkt_nr) < pck_number) &&
                         !(bytes_read == sizeof(CONACC) && 
                         acc_pck.pkt_type_id == CONACC_TYPE &&
                         acc_pck.session_id == session_id)) {
@@ -192,12 +193,14 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
                 b_connection_closed = assert_read(bytes_read, sizeof(rcvd_pck),
                                                     socket_fd, -1, NULL, data);
             }
-            else if (rcvd_pck.pkt_type_id == RCVD_TYPE && 
+            else if (bytes_read == sizeof(rcvd_pck) && 
+                    rcvd_pck.pkt_type_id == RCVD_TYPE && 
                     rcvd_pck.session_id == session_id) {
                 // We received a confirmation, exit the loop.
                 b_connection_closed = true;
             }
-            else if (rcvd_pck.session_id != session_id || 
+            else if (bytes_read != sizeof(ACC) ||
+                    rcvd_pck.session_id != session_id || 
                     (rcvd_pck.pkt_type_id != CONACC_TYPE && 
                     rcvd_pck.pkt_type_id != ACC_TYPE)) {
                 // We received something that we can't skip.

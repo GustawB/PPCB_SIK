@@ -95,13 +95,13 @@ void run_tcp_server(uint16_t port) {
                     DATA* dt = (DATA*)recv_data;
                     if (dt->pkt_type_id != DATA_TYPE || 
                         dt->session_id != connect_data.session_id || 
-                        dt->pkt_nr != pck_number) {
+                        be64toh(dt->pkt_nr) != pck_number) {
                         // Invalid package, send RJT to
                         // the client and move on.
                         RJT error_pck = {.session_id = 
                                         connect_data.session_id,
                                         .pkt_type_id = RJT_TYPE, 
-                                        .pkt_nr = pck_number};
+                                        .pkt_nr = dt->pkt_nr};
                         bytes_written = write_n_bytes(client_fd, 
                                             &error_pck, sizeof(error_pck));
                         b_connection_closed = assert_write(bytes_written,
@@ -120,9 +120,9 @@ void run_tcp_server(uint16_t port) {
                         assert_null(recv_data, socket_fd, client_fd, 
                                         recv_data, NULL);
                         bytes_read = read_n_bytes(client_fd, data_to_print,
-                                                    dt->data_size);
+                                                    be32toh(dt->data_size));
                         b_connection_closed = assert_read(bytes_read, 
-                                                            dt->data_size, 
+                                                            be32toh(dt->data_size),
                                                             socket_fd, 
                                                             client_fd, 
                                                             recv_data, 
