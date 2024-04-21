@@ -20,8 +20,8 @@ void run_tcp_server(uint16_t port) {
 
     // Set the socket to listen.
     if(listen(socket_fd, QUEUE_LENGTH) < 0) {
-        close(socket_fd);
-        syserr("ERROR: Socket failed to switch to the listening state.");
+        assert_socket_close(socket_fd);
+        syserr("Socket failed to switch to the listening state.");
     }
 
     // Communication loop:
@@ -33,32 +33,36 @@ void run_tcp_server(uint16_t port) {
         int client_fd = accept(socket_fd, (struct sockaddr*)&client_addr, 
                                 &((socklen_t){sizeof(client_addr)}));
         if (client_fd < 0) {
-            close(socket_fd);
-            syserr("Failed to connect with a client");
+            //close(socket_fd);
+            error("Failed to connect with a client");
         }
 
-        // Set timeouts for the client.
-        set_timeouts(socket_fd, client_fd, NULL);
-
+        CONN connect_data;
+        bool b_connection_closed = true;
+        ssize_t bytes_read = -1;
         struct timeval start, end;
         gettimeofday(&start, NULL);
         long long int send_data = 0;
         printf("Start\n");
+        if (!b_was_tcp_server_interrupted) {
+            // Set timeouts for the client.
+            set_timeouts(socket_fd, client_fd, NULL);
 
-        // Get a CONN package.
-        CONN connect_data;
-        ssize_t bytes_read = read_n_bytes(client_fd, &connect_data, 
-                                            sizeof(connect_data));
-        bool b_connection_closed = assert_read(bytes_read, 
-                                                sizeof(connect_data), 
-                                                socket_fd, client_fd,
-                                                NULL, NULL);
+            // Get a CONN package.
+            bytes_read = read_n_bytes(client_fd, &connect_data, 
+                                                sizeof(connect_data));
+            b_connection_closed = assert_read(bytes_read, 
+                                                    sizeof(connect_data), 
+                                                    socket_fd, client_fd,
+                                                    NULL, NULL);
+        }
+
         if (!b_connection_closed && (connect_data.pkt_type_id != CONN_TYPE || 
             connect_data.prot_id != TCP_PROT_ID)) {
             // We got something wrong. Close the connection.
             error("Wanted CONN TCP, got something else");
             b_connection_closed = true;
-            close(client_fd);
+            assert_socket_close(client_fd);
         }
         if(!b_connection_closed && !b_was_tcp_server_interrupted) {
             // Managed to get the CONN package, its time to send 
@@ -108,7 +112,7 @@ void run_tcp_server(uint16_t port) {
                             free(recv_data);
                         }
                         b_connection_closed = true;
-                        close(client_fd);
+                        assert_socket_close(client_fd);
                     }
                     else  {
                         // Valid package, read the data part.
@@ -125,7 +129,6 @@ void run_tcp_server(uint16_t port) {
                                                             data_to_print);
                         if (!b_connection_closed) {
                             // Managed to get the data. Print it.
-                            //print_data(data_to_print, dt->data_size);
                             ++pck_number;
                             byte_count -= dt->data_size;
                             free(recv_data);
@@ -150,7 +153,7 @@ void run_tcp_server(uint16_t port) {
             if (!b_connection_closed) {
                 // Close the connection.
                 send_data += bytes_written;
-                close(client_fd);
+                assert_socket_close(client_fd);
             }
         }
 
@@ -163,6 +166,6 @@ void run_tcp_server(uint16_t port) {
             printf("Bytes send in total: %lld\n", send_data);
         }
     }
-    
-    close(socket_fd);
+
+    assert_socket_close(socket_fd);
 }

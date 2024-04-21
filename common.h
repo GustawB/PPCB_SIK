@@ -128,6 +128,9 @@ If so, it closes/clears passed params. */
 void assert_null(char* data, int main_fd, int secondary_fd,
                     char* main_data, char* secondary_data);
 
+/* Function that tries to close the given socket and throw syserr on failure. */
+assert_socket_close(int fd);
+
 /* Function that prints len bytes of the given data. It's up to the user 
 to check if len is not bigger than the data length.*/
 void print_data(char* data, size_t len);

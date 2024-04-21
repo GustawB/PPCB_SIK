@@ -176,7 +176,7 @@ void run_udp_server(uint16_t port) {
                                             -1, NULL, recv_data);
                     }
                     else if (retransmits_counter == MAX_RETRANSMITS) {
-                        // Fuck this shit I'm out.
+                        // Reached retransmit limit, exit.
                         b_connection_closed = true;
                         printf("retransmits: %d\n", retransmits_counter);
                         error("Failed to receive data because of the timeout");
@@ -267,5 +267,5 @@ void run_udp_server(uint16_t port) {
     }
 
     free(recv_data);
-    close(socket_fd);
+    assert_socket_close(socket_fd);
 }

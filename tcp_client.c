@@ -21,8 +21,8 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
     // Connect to the server.
     if (connect(socket_fd, (struct sockaddr*)server_addr,
                 (socklen_t) sizeof(*server_addr)) < 0) {
-        close(socket_fd);
         free(data);
+        assert_socket_close(socket_fd);
         syserr("Client failed to connect to the server");
     }
 
@@ -124,5 +124,5 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
         printf("Bytes send in total: %lld\n", send_data);
     }
     
-    close(socket_fd);
+    assert_socket_close(socket_fd);
 }

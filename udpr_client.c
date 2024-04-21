@@ -195,7 +195,6 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
             else if (rcvd_pck.pkt_type_id == RCVD_TYPE && 
                     rcvd_pck.session_id == session_id) {
                 // We received a confirmation, exit the loop.
-                // break;
                 b_connection_closed = true;
             }
             else if (rcvd_pck.session_id != session_id || 
@@ -218,5 +217,5 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
     }
 
     // End the connection.
-    close(socket_fd);
+    assert_socket_close(socket_fd);
 }

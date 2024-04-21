@@ -114,6 +114,13 @@ struct sockaddr_in get_server_address(char const *host,
     return send_addr;
 }
 
+assert_socket_close(int fd){
+    if (close(fd) == -1) {
+        // Failed to close the descriptor.
+        syserr("Failed to close socket");
+    }
+}
+
 void cleanup(char* data_to_cleanup) {
     if (data_to_cleanup != NULL) {
         free(data_to_cleanup);
@@ -122,7 +129,7 @@ void cleanup(char* data_to_cleanup) {
 
 void close_fd(int fd) {
     if (fd >= 0) {
-        close(fd);
+        assert_socket_close(fd);
     }
 }
 
@@ -139,15 +146,15 @@ bool assert_write(ssize_t result, ssize_t to_cmp,
             return true;
         }
         else {
+            cleanup(data_from_stream);
             close_fd(main_fd);
             close_fd(secondary_fd);
-            cleanup(data_from_stream);
             syserr("Package send failed");
         }
     }
     else if (result !=  to_cmp) {
-        close_fd(secondary_fd);
         cleanup(data_to_cleanup);
+        close_fd(secondary_fd);
         error("Incomplete send");
         return true;
     }
@@ -175,14 +182,14 @@ bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd,
     }
     else if (result == 0) {
         // Connection closed.
-        cleanup(data_to_cleanup);
         close_fd(secondary_fd);
+        cleanup(data_to_cleanup);
         error("Connection closed");
         return true;
     }
     else if (result != to_cmp) {
-        cleanup(data_to_cleanup);
         close_fd(secondary_fd);
+        cleanup(data_to_cleanup);
         error("Incomplete read");
         return true;
     }
@@ -277,9 +284,9 @@ int setup_socket(struct sockaddr_in* addr, uint8_t protocol_id,
     init_sockaddr(addr, port);
     if (bind(socket_fd, (struct sockaddr*)addr,
          (socklen_t) sizeof(*addr)) < 0){
-        close(socket_fd);
         cleanup(data_from_stream);
-        syserr("ERROR: Failed to bind a socket");
+        close(socket_fd);
+        syserr("Failed to bind a socket");
     }
 
     return socket_fd;
@@ -290,17 +297,17 @@ void set_timeouts(int main_fd, int secondary_fd,
     struct timeval time_options = {.tv_sec = MAX_WAIT, .tv_usec = 0};
     if (setsockopt(secondary_fd, SOL_SOCKET, SO_RCVTIMEO,
         &time_options, sizeof(time_options)) < 0) {
+        cleanup(data_from_stream);
         close_fd(main_fd);
         close_fd(secondary_fd);
-        cleanup(data_from_stream);
         syserr("Failed to set timeouts");
     }
     
     if (setsockopt(secondary_fd, SOL_SOCKET, SO_SNDTIMEO, 
         &time_options, sizeof(time_options)) < 0) {
+        cleanup(data_from_stream);
         close_fd(main_fd);
         close_fd(secondary_fd);
-        cleanup(data_from_stream);
         syserr("Failed to set timeouts");
     }
 

@@ -116,5 +116,5 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
         printf("Bytes send in total: %lld\n", send_data);
     }
     
-    close(socket_fd);
+    assert_socket_close(socket_fd);
 }
