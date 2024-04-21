@@ -47,6 +47,7 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
                                             sizeof(connect_data), socket_fd,
                                             -1, NULL, data);
     }
+
     
     CONACC con_ack_data;
     if (!b_connection_closed){
@@ -74,9 +75,10 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
             size_t pck_size = sizeof(DATA) - 8 + curr_len;
             char* data_pck = malloc(pck_size);
             assert_null(data_pck, socket_fd, -1, NULL, data);
-            
+
+            uint32_t be_curr_len = htobe32(curr_len);
             init_data_pck(session_id, htobe64(pck_number), 
-                                    htobe32(curr_len), data_pck, data_ptr);
+                                    be_curr_len, data_pck, data_ptr);
 
             // Send the package to the server.
             bytes_written = write_n_bytes(socket_fd, data_pck, pck_size);

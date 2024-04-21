@@ -75,7 +75,7 @@ void run_tcp_server(uint16_t port) {
                                                 sizeof(con_ack_data), 
                                                 socket_fd, client_fd, 
                                                 NULL, NULL);
-                                                
+
             send_data += bytes_written;
             // Read data from the client.
             uint64_t byte_count = be64toh(connect_data.data_length);
@@ -117,7 +117,7 @@ void run_tcp_server(uint16_t port) {
                     }
                     else  {
                         // Valid package, read the data part.
-                        char* data_to_print = malloc(dt->data_size + 1);
+                        char* data_to_print = malloc(be32toh(dt->data_size));
                         assert_null(recv_data, socket_fd, client_fd, 
                                         recv_data, NULL);
                         bytes_read = read_n_bytes(client_fd, data_to_print,
@@ -131,7 +131,7 @@ void run_tcp_server(uint16_t port) {
                         if (!b_connection_closed) {
                             // Managed to get the data. Print it.
                             ++pck_number;
-                            byte_count -= dt->data_size;
+                            byte_count -= be32toh(dt->data_size);
                             free(recv_data);
                         }
                         free(data_to_print);

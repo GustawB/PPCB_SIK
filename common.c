@@ -19,7 +19,7 @@ void init_data_pck(uint64_t session_id, uint64_t pck_number,
     memcpy(data_iter, &data_size, sizeof(data_size));
     data_iter += sizeof(data_size);
 
-    memcpy(data_iter, data, data_size);
+    memcpy(data_iter, data, be32toh(data_size));
 }
 
 void init_sockaddr(struct sockaddr_in* addr, uint16_t port) {
@@ -177,7 +177,7 @@ bool assert_read(ssize_t result, ssize_t to_cmp, int main_fd,
             close_fd(main_fd);
             close_fd(secondary_fd);
             cleanup(data_from_stream);
-            syserr("Failed to write data");
+            syserr("Failed to read data");
         }
     }
     else if (result == 0) {
