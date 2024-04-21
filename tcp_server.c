@@ -95,7 +95,8 @@ void run_tcp_server(uint16_t port) {
                     DATA* dt = (DATA*)recv_data;
                     if (dt->pkt_type_id != DATA_TYPE || 
                         dt->session_id != connect_data.session_id || 
-                        be64toh(dt->pkt_nr) != pck_number) {
+                        be64toh(dt->pkt_nr) != pck_number || 
+                        !assert_data_size(be32toh(dt->data_size))) {
                         // Invalid package, send RJT to
                         // the client and move on.
                         RJT error_pck = {.session_id = 

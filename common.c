@@ -334,3 +334,7 @@ void ignore_signal(void (*handler)(), int8_t signtoign) {
         syserr("sigaction failed");
     }
 }
+
+bool assert_data_size(uint32_t data_size) {
+    return (data_size > 0 && data_size <= 64000);
+}

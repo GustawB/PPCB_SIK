@@ -103,7 +103,8 @@ void run_udp_server(uint16_t port) {
                     if (bytes_read >= (int32_t)(sizeof(DATA) - 8) && 
                         dt->pkt_type_id == DATA_TYPE && 
                         be64toh(dt->pkt_nr) == pck_number && dt->session_id == 
-                        connection_data.session_id) {
+                        connection_data.session_id && 
+                        assert_data_size(be32toh(dt->data_size))) {
                         // We got our data package :))))))
                         break;        
                     }
@@ -119,7 +120,8 @@ void run_udp_server(uint16_t port) {
                             dt->pkt_type_id == DATA_TYPE) {
                         if (connection_data.prot_id != UDPR_PROT_ID || 
                             be64toh(dt->pkt_nr) >= pck_number || 
-                            dt->session_id != connection_data.session_id) {
+                            dt->session_id != connection_data.session_id ||
+                            !assert_data_size(be32toh(dt->data_size))) {
                             // Someone send us an invalid package. Send him 
                             // RJT and close the connection if it was our client.
                             printf("Wanted nr: %ld; Got: %ld; Their session: %ld; Out session: %ld\n", pck_number, dt->pkt_nr, dt->session_id, connection_data.session_id);

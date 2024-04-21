@@ -163,4 +163,7 @@ void set_timeouts(int main_fd, int secondary_fd, char* secondary_data);
 If handler is NULL, handler is set to SIG_IGN. */
 void ignore_signal(void (*handler)(), int8_t signtoign);
 
+/* Function that checks if the data size is between 1 and 64000*/
+bool assert_data_size(uint32_t data_size);
+
 #endif
