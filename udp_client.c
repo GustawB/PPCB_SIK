@@ -71,7 +71,7 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
             uint32_t curr_len = calc_pck_size(data_length);
 
             // Initialize a package.
-            ssize_t pck_size = sizeof(DATA) - 8 + curr_len;
+            ssize_t pck_size = sizeof(DATA) - sizeof(char*) + curr_len;
             char* data_pck = malloc(pck_size);
             assert_null(data_pck, socket_fd, -1, NULL, data);
 

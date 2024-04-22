@@ -3,6 +3,6 @@
 
 // In seconds
 #define MAX_WAIT 1
-#define MAX_RETRANSMITS 10
+#define MAX_RETRANSMITS 5
 
 #endif

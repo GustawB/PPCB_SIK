@@ -93,7 +93,7 @@ void run_udp_server(uint16_t port) {
                     // I can process data further.
                     // We got something.
                     DATA* dt = (DATA*)recv_data;
-                    if (bytes_read >= (int32_t)(sizeof(DATA) - 8) && 
+                    if (bytes_read >= (int32_t)(sizeof(DATA) - sizeof(char*)) && 
                         dt->pkt_type_id == DATA_TYPE && 
                         be64toh(dt->pkt_nr) == pck_number && dt->session_id == 
                         connection_data.session_id && 
@@ -101,7 +101,7 @@ void run_udp_server(uint16_t port) {
                         // We got our data package :))))))
                         break;        
                     }
-                    else if ((size_t)bytes_read >= sizeof(DATA) - 8 && 
+                    else if ((size_t)bytes_read >= sizeof(DATA) - sizeof(char*) && 
                             dt->pkt_type_id == DATA_TYPE) {
                         if (connection_data.prot_id != UDPR_PROT_ID || 
                             be64toh(dt->pkt_nr) >= pck_number || 
@@ -204,11 +204,15 @@ void run_udp_server(uint16_t port) {
             if (!b_connection_closed && !b_was_udp_server_interrupted) {
                 // We finally managed to get the package.
                 DATA* dt = (DATA*)recv_data;
-                byte_count -= be32toh(dt->data_size);
+                if (byte_count < byte_count - be32toh(dt->data_size)) {
+                    byte_count = 0;
+                }
+                else {
+                    byte_count -= be32toh(dt->data_size);
+                }
                 ++pck_number;
 
-                print_data(recv_data + sizeof(DATA) - 8, be32toh(dt->data_size));
-                //printf("%ld\n", byte_count);
+                print_data(recv_data + sizeof(DATA) - sizeof(char*), be32toh(dt->data_size));
 
                 if (connection_data.prot_id == UDPR_PROT_ID) {
                     // Send the ACK package.

@@ -85,9 +85,9 @@ void run_tcp_server(uint16_t port) {
                 assert_null(recv_data, socket_fd, client_fd, NULL, NULL);
 
                 bytes_read = read_n_bytes(client_fd, recv_data, 
-                                            sizeof(DATA) - 8);
+                                            sizeof(DATA) - sizeof(char*));
                 b_connection_closed = assert_read(bytes_read, 
-                                                    sizeof(DATA) - 8, 
+                                                    sizeof(DATA) - sizeof(char*), 
                                                     socket_fd, client_fd, 
                                                     recv_data, NULL);
                 if (!b_connection_closed) {
@@ -131,7 +131,12 @@ void run_tcp_server(uint16_t port) {
                             // Managed to get the data. Print it.
                             print_data(data_to_print, be32toh(dt->data_size));
                             ++pck_number;
-                            byte_count -= be32toh(dt->data_size);
+                            if (byte_count < byte_count - be32toh(dt->data_size)) {
+                                byte_count = 0;
+                            }
+                            else {
+                                byte_count -= be32toh(dt->data_size);
+                            }
                             free(recv_data);
                         }
                         free(data_to_print);

@@ -84,10 +84,11 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
         uint32_t curr_len = calc_pck_size(data_length);
 
         // Initialize a package.
-        ssize_t pck_size = sizeof(DATA) - 8 + curr_len;
+        ssize_t pck_size = sizeof(DATA) - sizeof(char*) + curr_len;
         char* data_pck = malloc(pck_size);
         assert_null(data_pck, socket_fd, -1, NULL, data);
         
+        printf("%ld %d\n", htobe64(pck_number), htobe32(curr_len));
         init_data_pck(session_id, htobe64(pck_number), 
                                 htobe32(curr_len), data_pck, data_ptr);
 
@@ -125,7 +126,6 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
                         be64toh(acc_pck.pkt_nr) == pck_number) {
                     // Valid package got rejected.
                     b_connection_closed = true;
-                    close(socket_fd);
                     error("Data rejected");
                 }
                 else if (!(bytes_read == sizeof(ACC) && 

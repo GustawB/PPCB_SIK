@@ -71,7 +71,7 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
         while(data_length > 0 && !b_connection_closed) {
             uint32_t curr_len = calc_pck_size(data_length);
             // Initialize a package.
-            size_t pck_size = sizeof(DATA) - 8 + curr_len;
+            size_t pck_size = sizeof(DATA) - sizeof(char*) + curr_len;
             char* data_pck = malloc(pck_size);
             assert_null(data_pck, socket_fd, -1, NULL, data);
 
