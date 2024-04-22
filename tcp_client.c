@@ -29,7 +29,6 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
     struct timeval start, end;
     long long int send_data = 0;
     gettimeofday(&start, NULL);
-    printf("Start\n");
 
     // Set timeouts for the server.
     set_timeouts(-1, socket_fd, data);
@@ -121,8 +120,8 @@ void run_tcp_client(struct sockaddr_in* server_addr, char* data,
         double time_taken = (end.tv_sec - start.tv_sec) * 1e6;
         time_taken = (time_taken + (end.tv_usec - 
                                 start.tv_usec)) * 1e-6;
-        printf("\nElapsed: %f seconds\n", time_taken);
-        printf("Bytes send in total: %lld\n", send_data);
+        //printf("\nElapsed: %f seconds\n", time_taken);
+        //printf("Bytes send in total: %lld\n", send_data);
     }
     
     assert_socket_close(socket_fd);

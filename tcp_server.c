@@ -41,9 +41,8 @@ void run_tcp_server(uint16_t port) {
         CONN connect_data;
         ssize_t bytes_read = -1;
         struct timeval start, end;
-        gettimeofday(&start, NULL);
         long long int send_data = 0;
-        printf("Start\n");
+        gettimeofday(&start, NULL);
         if (!b_was_tcp_server_interrupted && !b_connection_closed) {
             // Set timeouts for the client.
             set_timeouts(socket_fd, client_fd, NULL);
@@ -118,7 +117,7 @@ void run_tcp_server(uint16_t port) {
                     else  {
                         // Valid package, read the data part.
                         char* data_to_print = malloc(be32toh(dt->data_size));
-                        assert_null(recv_data, socket_fd, client_fd, 
+                        assert_null(data_to_print, socket_fd, client_fd, 
                                         recv_data, NULL);
                         bytes_read = read_n_bytes(client_fd, data_to_print,
                                                     be32toh(dt->data_size));
@@ -130,6 +129,7 @@ void run_tcp_server(uint16_t port) {
                                                             data_to_print);
                         if (!b_connection_closed) {
                             // Managed to get the data. Print it.
+                            print_data(data_to_print, be32toh(dt->data_size));
                             ++pck_number;
                             byte_count -= be32toh(dt->data_size);
                             free(recv_data);
@@ -163,8 +163,8 @@ void run_tcp_server(uint16_t port) {
             double time_taken = (end.tv_sec - start.tv_sec) * 1e6;
             time_taken = (time_taken + (end.tv_usec - 
                                     start.tv_usec)) * 1e-6;
-            printf("\nElapsed: %f seconds\n", time_taken);
-            printf("Bytes send in total: %lld\n", send_data);
+            //printf("\nElapsed: %f seconds\n", time_taken);
+            //printf("Bytes send in total: %lld\n", send_data);
         }
     }
 

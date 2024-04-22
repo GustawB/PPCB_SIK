@@ -19,13 +19,13 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
     struct timeval start, end;
     long long int send_data = 0;
     gettimeofday(&start, NULL);
-    printf("Start: Session ID: %ld\n", session_id);
+    //printf("Start: Session ID: %ld\n", session_id);
 
     // Set timeouts for the server.
     set_timeouts(-1, socket_fd, data);
 
     // CONN-CONACK loop
-    int retransmit_iter = 0;
+    int retransmit_iter = -1;
     bool b_connection_closed = false;
     while (!b_connection_closed && retransmit_iter < MAX_RETRANSMITS &&
             !b_was_udpr_cl_interrupted) {
@@ -101,7 +101,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
         send_data += bytes_written;
         // Managed to send the data, try to get an ACC.
         ACC acc_pck;
-        retransmit_iter = 1;
+        retransmit_iter = 0;
         // DATA-ACC loop.
         while (!b_connection_closed && !b_was_udpr_cl_interrupted) {
             ssize_t bytes_read = recvfrom(socket_fd, &acc_pck,
@@ -118,15 +118,7 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
                     ACC_TYPE && acc_pck.session_id == session_id && 
                     be64toh(acc_pck.pkt_nr) == pck_number) {
                     // We received a confirmation, let's proceed.
-                    printf("Received ACK\n");
                     break;
-                }
-                else if (retransmit_iter == MAX_RETRANSMITS) {
-                    // We reached the retransmit limit and got nothing, 
-                    // it's time to close the connection.
-                    b_connection_closed = true;
-                    printf("retransmits: %d\n", retransmit_iter);
-                    error("Timeout");
                 }
                 else if (bytes_read == sizeof(RJT) && acc_pck.pkt_type_id ==
                         RJT_TYPE && acc_pck.session_id == session_id &&
@@ -151,14 +143,13 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
             else { // errno == EAGAIN
                 // Connection timeout. Retransmit the data.
                 if (retransmit_iter >= MAX_RETRANSMITS) {
-                    printf("retransmits: %d\n", retransmit_iter);
+                    // Or not because we reached the retransmit limit.
                     b_connection_closed = true;
                     free(data_pck);
                     error("Timeout");
                 }
                 else {
                     errno = 0;
-                    printf("Retransmit DATA %ld\n", pck_number);
                     bytes_written = sendto(socket_fd, data_pck, pck_size, 0,
                                             (struct sockaddr*)&loc_server_addr,
                                             addr_length);
@@ -215,8 +206,8 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
         double time_taken = (end.tv_sec - start.tv_sec) * 1e6;
         time_taken = (time_taken + (end.tv_usec - 
                                 start.tv_usec)) * 1e-6;
-        printf("\nElapsed: %f seconds\n", time_taken);
-        printf("Bytes send in total: %lld\n", send_data);
+        //printf("\nElapsed: %f seconds\n", time_taken);
+        //printf("Bytes send in total: %lld\n", send_data);
     }
 
     // End the connection.
