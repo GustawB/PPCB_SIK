@@ -56,11 +56,6 @@ void run_udp_server(uint16_t port) {
             errno = 0; // EAGAIN, clear the error.
         }
 
-        struct timeval start, end;
-        long long int send_data = 0;
-        gettimeofday(&start, NULL);
-        //printf("Start: Session ID: %ld\n", connection_data.session_id);
-
         // Send CONACC back to the client.
         CONACC resp = {.pkt_type_id = CONACC_TYPE, 
                         .session_id = connection_data.session_id};
@@ -70,7 +65,6 @@ void run_udp_server(uint16_t port) {
         b_connection_closed = assert_write(bytes_written, sizeof(resp),
                                             socket_fd, -1, NULL, recv_data);
 
-        send_data += bytes_written;
         // If we managed to send the CONACC, read the data.
         uint64_t pck_number = 0;
         uint64_t byte_count = be64toh(connection_data.data_length);
@@ -119,7 +113,6 @@ void run_udp_server(uint16_t port) {
                             b_connection_closed = assert_write(bytes_written,
                                                     sizeof(rjt_pck), socket_fd,
                                                     -1, NULL, recv_data);
-                            send_data += bytes_written;
                             if (dt->session_id == connection_data.session_id) {
                                 // It was our client, we have 
                                 // to close the connection.
@@ -142,7 +135,6 @@ void run_udp_server(uint16_t port) {
                                                             sizeof(conrjt_pck),
                                                             socket_fd, -1, 
                                                             NULL, recv_data);
-                        send_data += bytes_written;
                     }
                     else if (!(bytes_read == sizeof(CONN) && 
                             connection_data.prot_id == UDPR_PROT_ID && 
@@ -175,7 +167,6 @@ void run_udp_server(uint16_t port) {
                         assert_write(bytes_written, sizeof(resp), socket_fd,
                                         -1, NULL, recv_data);
                         ++retransmits_counter;
-                        send_data += bytes_written;
                     }
                     else {
                         errno = 0;
@@ -190,7 +181,6 @@ void run_udp_server(uint16_t port) {
                         assert_write(bytes_written, sizeof(acc_retr), 
                                     socket_fd, -1, NULL, recv_data);
                         ++retransmits_counter;
-                        send_data += bytes_written;
                     }
                 }
 
@@ -225,7 +215,6 @@ void run_udp_server(uint16_t port) {
                     b_connection_closed = 
                         assert_write(bytes_written, sizeof(acc_resp), 
                         socket_fd, -1, NULL, recv_data);
-                        send_data += bytes_written;
                 }
             }
         }
@@ -240,16 +229,6 @@ void run_udp_server(uint16_t port) {
                 (struct sockaddr*)&client_addr, addr_length);
             b_connection_closed = assert_write(bytes_written, 
                 sizeof(rcvd_resp), socket_fd, -1, NULL, recv_data);
-            send_data += bytes_written;
-        }
-
-        if (DEBUG_STATE == 1) {
-            gettimeofday(&end, NULL);
-            double time_taken = (end.tv_sec - start.tv_sec) * 1e6;
-            time_taken = (time_taken + (end.tv_usec - 
-                                    start.tv_usec)) * 1e-6;
-            //printf("\nElapsed: %f seconds\n", time_taken);
-            //printf("Bytes send in total: %lld\n", send_data);
         }
     }
 

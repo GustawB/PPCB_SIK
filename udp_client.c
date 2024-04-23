@@ -19,11 +19,6 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
     struct sockaddr_in loc_server_addr = *server_addr;
     int socket_fd = create_socket(UDP_PROT_ID, data);
 
-    struct timeval start, end;
-    long long int send_data = 0;
-    gettimeofday(&start, NULL);
-    //printf("Start; Session id: %ld\n", session_id);
-
     // Set timeouts for the server.
     set_timeouts(-1, socket_fd, data);
 
@@ -48,7 +43,6 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
 
     if (!b_connection_closed && !b_was_udp_cl_interrupted) {
         socklen_t addr_length = (socklen_t)sizeof(*server_addr);
-        send_data += bytes_written;
         // Get the CONACC package.
         CONACC ack_pck;
         ssize_t bytes_read = recvfrom(socket_fd, &ack_pck,
@@ -64,7 +58,8 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
         // Send data to the server.
         uint64_t pck_number = 0;
         const char* data_ptr = data;
-        while(data_length > 0 && !b_connection_closed && !b_was_udp_cl_interrupted) {
+        while(data_length > 0 && !b_connection_closed && 
+            !b_was_udp_cl_interrupted) {
             // recvfrom can change the value of the addr_length,
             // so I have to update it here over and over again.
             addr_length = (socklen_t)sizeof(loc_server_addr);
@@ -85,7 +80,6 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
                                                 socket_fd, -1, data_pck, data);
 
             if (!b_connection_closed) {
-                send_data += bytes_written;
                 free(data_pck);
                 ++pck_number;
                 data_length -= curr_len;
@@ -105,15 +99,6 @@ void run_udp_client(const struct sockaddr_in* server_addr, char* data,
                 b_connection_closed = get_nonudpr_rcvd(&rcvd_pck, session_id);
             }
         }
-    }
-
-    if (DEBUG_STATE == 1) {
-        gettimeofday(&end, NULL);
-        double time_taken = (end.tv_sec - start.tv_sec) * 1e6;
-        time_taken = (time_taken + (end.tv_usec - 
-                                start.tv_usec)) * 1e-6;
-        //printf("\nElapsed: %f seconds\n", time_taken);
-        //printf("Bytes send in total: %lld\n", send_data);
     }
     
     assert_socket_close(socket_fd);

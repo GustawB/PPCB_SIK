@@ -16,11 +16,6 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
     int socket_fd = create_socket(UDPR_PROT_ID, data);
     ignore_signal(udpr_cl_handler, SIGINT);
 
-    struct timeval start, end;
-    long long int send_data = 0;
-    gettimeofday(&start, NULL);
-    //printf("Start: Session ID: %ld\n", session_id);
-
     // Set timeouts for the server.
     set_timeouts(-1, socket_fd, data);
 
@@ -43,7 +38,6 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
                                             -1, NULL, data);
         if (!b_connection_closed && !b_was_udpr_cl_interrupted) {
             // Try to get a CONACC package.
-            send_data += bytes_written;
             CONACC conacc_pck;
             ssize_t bytes_read = recvfrom(socket_fd, &conacc_pck,
                                     sizeof(conacc_pck), 0,
@@ -88,7 +82,6 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
         char* data_pck = malloc(pck_size);
         assert_null(data_pck, socket_fd, -1, NULL, data);
         
-        printf("%ld %d\n", htobe64(pck_number), htobe32(curr_len));
         init_data_pck(session_id, htobe64(pck_number), 
                                 htobe32(curr_len), data_pck, data_ptr);
 
@@ -99,7 +92,6 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
         b_connection_closed = assert_write(bytes_written, pck_size, socket_fd,
                                             -1, data_pck, data);
 
-        send_data += bytes_written;
         // Managed to send the data, try to get an ACC.
         ACC acc_pck;
         retransmit_iter = 0;
@@ -155,7 +147,6 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
                                             addr_length);
                     b_connection_closed = assert_write(bytes_written, pck_size,
                                             socket_fd, -1, data_pck, data);
-                    send_data += bytes_written;
                     ++retransmit_iter;
                 }
             }
@@ -199,15 +190,6 @@ void run_udpr_client(const struct sockaddr_in* server_addr, char* data,
                 error("Invalid package in RCVD");
             }
         }
-    }
-
-    if (DEBUG_STATE == 1) {
-        gettimeofday(&end, NULL);
-        double time_taken = (end.tv_sec - start.tv_sec) * 1e6;
-        time_taken = (time_taken + (end.tv_usec - 
-                                start.tv_usec)) * 1e-6;
-        //printf("\nElapsed: %f seconds\n", time_taken);
-        //printf("Bytes send in total: %lld\n", send_data);
     }
 
     // End the connection.

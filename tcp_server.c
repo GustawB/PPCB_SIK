@@ -40,9 +40,6 @@ void run_tcp_server(uint16_t port) {
 
         CONN connect_data;
         ssize_t bytes_read = -1;
-        struct timeval start, end;
-        long long int send_data = 0;
-        gettimeofday(&start, NULL);
         if (!b_was_tcp_server_interrupted && !b_connection_closed) {
             // Set timeouts for the client.
             set_timeouts(socket_fd, client_fd, NULL);
@@ -75,7 +72,6 @@ void run_tcp_server(uint16_t port) {
                                                 socket_fd, client_fd, 
                                                 NULL, NULL);
 
-            send_data += bytes_written;
             // Read data from the client.
             uint64_t byte_count = be64toh(connect_data.data_length);
             uint64_t pck_number = 0;
@@ -108,7 +104,6 @@ void run_tcp_server(uint16_t port) {
                                                 sizeof(error_pck), socket_fd,
                                                 client_fd, recv_data, NULL);
                         if (!b_connection_closed) {
-                            send_data += bytes_written;
                             free(recv_data);
                         }
                         b_connection_closed = true;
@@ -129,7 +124,7 @@ void run_tcp_server(uint16_t port) {
                                                             data_to_print);
                         if (!b_connection_closed) {
                             // Managed to get the data. Print it.
-                            print_data(data_to_print, be32toh(dt->data_size));
+                            //print_data(data_to_print, be32toh(dt->data_size));
                             ++pck_number;
                             if (byte_count < byte_count - be32toh(dt->data_size)) {
                                 byte_count = 0;
@@ -158,18 +153,8 @@ void run_tcp_server(uint16_t port) {
 
             if (!b_connection_closed) {
                 // Close the connection.
-                send_data += bytes_written;
                 assert_socket_close(client_fd);
             }
-        }
-
-        if (DEBUG_STATE == 1) {
-            gettimeofday(&end, NULL);
-            double time_taken = (end.tv_sec - start.tv_sec) * 1e6;
-            time_taken = (time_taken + (end.tv_usec - 
-                                    start.tv_usec)) * 1e-6;
-            //printf("\nElapsed: %f seconds\n", time_taken);
-            //printf("Bytes send in total: %lld\n", send_data);
         }
     }
 

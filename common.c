@@ -139,7 +139,7 @@ bool assert_write(ssize_t result, ssize_t to_cmp,
     if(result < 0) {
         cleanup(data_to_cleanup);
         if (errno == EPIPE) {
-            // Connection closed. Maninly for servers.
+            // Connection closed. Mainly for servers.
             close_fd(secondary_fd);
             error("Connection closed.");
             errno = 0;
